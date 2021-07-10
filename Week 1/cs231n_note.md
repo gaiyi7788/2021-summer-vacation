@@ -1,4 +1,4 @@
-[TOC]
+# CS231N
 
 ## Lecture 1: Image Classification
 
