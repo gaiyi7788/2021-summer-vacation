@@ -1,5 +1,7 @@
 [TOC]
 
+# CS231n
+
 ## Lecture 1: Image Classification
 
 ### The image classification task
