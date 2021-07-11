@@ -23,12 +23,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 #定义网络
-class Net(nn.Module): #nn.Module是所有网络的基类，自己的网络也应该继承这个类
+class Net(nn.Module):
     def __init__(self):
-        #super(Net,self).__init__()
-        super().__init__()
-        self.conv1 = nn.Conv2d(3,6,5) #(in_channels, out_channels, kernel_size)
-        self.pool = nn.MaxPool2d(2,2) #(kernel_size, stride)
+        super(Net,self).__init__()
+        self.conv1 = nn.Conv2d(3,6,5)
+        self.pool = nn.MaxPool2d(2,2)
         self.conv2 = nn.Conv2d(6,16,5)
         self.fc1 = nn.Linear(16*5*5,120)
         self.fc2 = nn.Linear(120,84)
@@ -56,7 +55,7 @@ optimizer = optim.SGD(net.parameters(),lr=0.001,momentum=0.9)
 #训练
 for epoch in range(2):
     running_loss = 0.0
-    for i, data in enumerate(trainloader,0):
+    for i, data in enumerate(trainloader,0): # i是序列脚标，data是具体数据
         inputs, labels = data
 
         optimizer.zero_grad()
