@@ -1,12 +1,14 @@
 import torch
 import torchvision
 import torchvision.transforms as transforms
-
+# Image Transform
 
 #数据预处理
 transform = transforms.Compose(
     [transforms.ToTensor(),transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))]
-)
+) # Compose的主要作用是将多个变换组合在一起，可以实现同时变换
+# ToTensor 功能：将PIL Image或者 ndarray 转换为tensor，并且归一化至[0-1] 
+# Normalize 分别传入三通道的mean和std
 
 trainset = torchvision.datasets.CIFAR10(root='./data',train=True,download=True,
                                         transform=transform)
