@@ -345,5 +345,10 @@ for epoch in range(2):
 - 所以：`outputs = net(inputs)`与`outputs = net.forward(inputs)` 是等价的。
 - `loss = criterion(outputs, labels)`: 用定义好 的损失函数对象计算出`loss`
 
-- `loss.backward()`: 
+- `tensor.backward()`: Computes the gradient of current tensor w.r.t. graph leaves.
+  - 如果`tensor`是一个标量（`loss`一般是一个确切的值，肯定是标量），则不用给`barckward()`传参数；
+  - 如果不是一个标量，需要传入一个和`tensor`同形的权重`tensor`
+
+- `tensor`有一个属性是`requires_grad`，如果处于`false`则该变量无法参与grid的计算；需要`tensor.requires_grad_()`函数将其设为 True  (常常用于冻结+迁移学习使用)
+- `backward()`完成后各个`tensor`的梯度计算结果得到，此时可以调用`optimizer.step()`进行网络参数更新。
 

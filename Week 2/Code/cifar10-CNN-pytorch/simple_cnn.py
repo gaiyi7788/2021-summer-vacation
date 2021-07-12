@@ -1,4 +1,5 @@
 import torch
+from torch import tensor
 import torchvision
 import torchvision.transforms as transforms
 # Image Transform
@@ -65,8 +66,10 @@ for epoch in range(2):
         outputs = net(inputs)
         loss = criterion(outputs, labels)
         loss.backward()
+        loss.requires_grad_()
+        print(loss.requires_grad)
+        
         optimizer.step()
-
         running_loss = running_loss+loss.item()
         if i % 2000 == 1999:
             print('[%d, %5d] loss: %.3f' %(epoch+1,i+1,running_loss/2000))
