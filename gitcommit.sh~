@@ -2,7 +2,7 @@
  
 title GIT一键提交
 color 3
-echo 当前目录是：$(dirname $0)
+echo 当前目录是：dirname $0
 echo;
  
 echo 开始添加变更：git add .
