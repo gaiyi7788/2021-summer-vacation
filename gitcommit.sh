@@ -2,7 +2,7 @@
  
 title GIT一键提交
 color 3
-echo 当前目录是：%cd%
+echo 当前目录是：dirname $0
 echo;
  
 echo 开始添加变更：git add .
@@ -10,7 +10,7 @@ git add .
 echo;
  
 set /p declation=输入提交的commit信息:
-git commit -m "%declation%"
+git commit -m $1
 echo;
  
 echo 将变更情况提交到远程自己分支：git push -u origin master
