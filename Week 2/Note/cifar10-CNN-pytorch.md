@@ -15,6 +15,33 @@ import torchvision.transforms as transforms
 - **torchvision.transforms** : 常用的图像操作，例如：随机切割，旋转，数据类型转换，图像到tensor ,numpy 数组到tensor , tensor 到 图像等。
 - **torchvision.utils** : 用于把形似 (3 x H x W) 的张量保存到硬盘中，给一个mini-batch的图像可以产生一个图像格网。
 
+## 设定GPU
+
+```python
+if torch.cuda.is_available(): #检查到GPU
+    device = torch.device("cuda") #创建一个gpu对应的对象
+else:
+    device = torch.device("cpu")
+```
+
+- 先检测GPU，然后设定`device`
+
+- 将后面定义的网络模型放到GPU上训练（其实就是将权重等参数对应的`tensor`转到GPU上）
+
+- 将输入数据`inputs`和标签`labels`转到GPU上
+
+  ```python
+  # 定义网络
+  net = Net()   
+  net = net.to(device)
+  # 训练中的某次iteration
+  inputs, labels = data
+  inputs, labels = inputs.to(device), labels.to(device)
+  ```
+
+- 为什么我们没注意到GPU的速度提升很多？那是因为网络非常的小。(跑2个epoch，gpu 65s ，cpu 75s)
+- 注意，只有`tensor`有`device`的属性。
+
 ## 数据集制作与数据预处理
 
 ```python
@@ -139,8 +166,7 @@ testloader = torch.utils.data.DataLoader(
 )
 ```
 
-- `DataLoader`将`Dataset`对象或自定义数据类的对象封装成一个迭代器；
-- 这个迭代器可以迭代输出`Dataset`的内容；
+- `DataLoader`将`Dataset`对象或自定义数据类的对象封装成一个可迭代对象，可以迭代输出`Dataset`的内容；
 - 同时可以实现多进程、shuffle、不同采样策略，数据校对等等处理过程。
 
 `__init__()`中的几个重要的输入：
@@ -153,6 +179,9 @@ testloader = torch.utils.data.DataLoader(
 ## 定义网络模型
 
 ```python
+import torch.nn as nn
+import torch.nn.functional as F
+
 class Net(nn.Module):
     def __init__(self):
         super(Net,self).__init__()
@@ -251,7 +280,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(),lr=0.001,momentum=0.9)
 #训练
 for epoch in range(2):
-    running_loss = 0.0
+    running_loss = 0.0 #累加2000次的loss作为总的loss
     for i, data in enumerate(trainloader,0): # i是序列脚标，data是具体数据
         inputs, labels = data
         optimizer.zero_grad()
@@ -264,10 +293,6 @@ for epoch in range(2):
         if i % 2000 == 1999:
             print('[%d, %5d] loss: %.3f' %(epoch+1,i+1,running_loss/2000))
             running_loss = 0.0
-print('Finished Training')
-#存储训练后的模型
-PATH = './cifar_net.pth'
-torch.save(net.state_dict(), PATH)
 ```
 
 ### torch.nn.CrossEntropyLoss(...)
@@ -322,7 +347,7 @@ for epoch in range(2):
 ![image-20210712154025596](cifar10-CNN-pytorch.assets/image-20210712154025596.png)![image-20210712155438627](cifar10-CNN-pytorch.assets/image-20210712155438627.png)  
 
 - 很明显传入了一个`batch`的 4 组数据，每个图是 $3 \times 32 \times 32$。
-- `enumerate() `函数用于将一个序列/迭代器组合为一个索引序列，同时列出数据和数据下标
+- `enumerate() `函数用于将一个序列/可迭代对象组合为一个索引序列，同时列出数据和数据下标
 - 内层`for`循环每进行一次`batch`的数据更新，称为一次`iteration`。
 
 ### 某一次iteration
@@ -337,6 +362,7 @@ for epoch in range(2):
         optimizer.step()
         running_loss = running_loss+loss.item()
         if i % 2000 == 1999:
+            # 求2000次的平均loss
             print('[%d, %5d] loss: %.3f' %(epoch+1,i+1,running_loss/2000))
             running_loss = 0.0
 ```
@@ -344,11 +370,73 @@ for epoch in range(2):
 - 为什么`outputs = net(inputs)`呢？因为pytorch在`nn.Module`中，实现了`__call__`方法，而在`__call__`方法中调用了`forward`函数。Python中，只要在创建类型的时候定义了`__call__()`方法，这个类型就是可调用的。
 - 所以：`outputs = net(inputs)`与`outputs = net.forward(inputs)` 是等价的。
 - `loss = criterion(outputs, labels)`: 用定义好 的损失函数对象计算出`loss`
-
 - `tensor.backward()`: Computes the gradient of current tensor w.r.t. graph leaves.
   - 如果`tensor`是一个标量（`loss`一般是一个确切的值，肯定是标量），则不用给`barckward()`传参数；
   - 如果不是一个标量，需要传入一个和`tensor`同形的权重`tensor`
-
 - `tensor`有一个属性是`requires_grad`，如果处于`false`则该变量无法参与grid的计算；需要`tensor.requires_grad_()`函数将其设为 True  (常常用于冻结+迁移学习使用)
 - `backward()`完成后各个`tensor`的梯度计算结果得到，此时可以调用`optimizer.step()`进行网络参数更新。
+- Use `torch.Tensor.item()` to get a Python number from a tensor containing a single value
+
+## 模型保存和加载
+
+```python
+# 存储训练后的模型
+PATH = './cifar_net.pth' # 一般保存成pth文件
+torch.save(net.state_dict(), PATH)
+# state_dict()仅返回参数
+net.load_state_dict(torch.load(PATH))
+```
+
+### 保存\加载学习到的参数
+
+- 保存：`torch.save(net.state_dict(), PATH)`
+- 加载：`net.load_state_dict(torch.load(PATH))` （要求事先有model，且与保存的model相同）
+
+### 保存\加载整个model的状态
+
+- 保存：`torch.save(net,PATH)`
+- 加载：`torch.load(PATH)`
+
+## 测试过程
+
+```python
+#这部分是举例，不是测试的重点，可有可无
+dataiter = iter(testloader)
+#随机得到一组数据
+images,labels = dataiter.next()
+print('GroundTruch:', ' '.join('%5s' % classes[labels[j]] for j in range(4)))
+outputs = net(images)
+_, predicted = torch.max(outputs,1)
+print('Predicted: ', ' '.join('%5s' % classes[predicted[j]] for j in range(4)))
+```
+`dataloader`本质上是一个可迭代对象，可以使用`iter()`进行访问，采用`iter(dataloader)`返回的是一个迭代器，然后可以使用`next()`访问。当然也可以像训练时用enumerate(dataloader)的形式访问。
+
+
+```python
+correct = 0
+total = 0
+with torch.no_grad():
+    for data in testloader: # 直接用for循环访问这个迭代器
+        images, labels = data
+        outputs = net(images)
+        _,predicted = torch.max(outputs.data,1)
+        total = total+labels.size(0)
+        correct = correct + (predicted==labels).sum().item()
+print('Accuracy of the network on the 10000 test images: %d %%' % (100*correct/total))
+```
+
+- `with`是python中上下文管理器，当要进行固定的进入，返回操作时，可以将对应需要的操作放在`with`所需要的语句中。
+- 在进行测试过程时，不希望计算梯度浪费计算资源（因为没必要计算，测试阶段不涉及backward），使用`torch.no_grad()`就可以不计算。
+- `torch.max(input, dim) `，输入`outputs.data`是一个`tensor`，`dim`是`max`函数索引的维度，0是**每列**的最大值，1是**每行**的最大值。函数会返回两个`tensor`，第一个`tensor`是每行的最大值；第二个`tensor`是每行最大值的索引。在计算准确率时第一个tensor的`values`是不需要的，所以我们只需提取第二个tensor
+
+# 记录一下训练和测试效果
+
+- 2 epoch , loss 1.277,GPU 65s ,CPU 74s，测试 accuracy 57%
+- 加大momentum到0.99，loss基本不下降，维持在2.08左右
+- 10 epoch，momentum改回0.9，loss 0.833，测试 accuracy 61%
+- 20 epoch，loss 0.534，测试 accuracy 61%
+
+分析原因：肯定是过拟合了。
+
+改进：考虑加入dropout试试
 

@@ -2,7 +2,15 @@ import torch
 from torch import tensor
 import torchvision
 import torchvision.transforms as transforms
+import time
 # Image Transform
+
+time_start=time.time()
+
+if torch.cuda.is_available(): #检查到GPU
+    device = torch.device("cuda") #创建一个gpu对应的对象
+else:
+    device = torch.device("cpu")
 
 #数据预处理
 transform = transforms.Compose(
@@ -45,38 +53,48 @@ class Net(nn.Module):
         x = self.fc3(x)
         return x
     
-net = Net()
-print(net)
+net = Net()   
+net = net.to(device)
 
 import torch.optim as optim
 
 #定义损失函数和优化
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(),lr=0.001,momentum=0.9)
+optimizer = optim.SGD(net.parameters(),lr=0.0008,momentum=0.9)
 
+#存储训练后的模型的路径
+PATH = './cifar_net.pth'
+minimum_loss = 100
 #训练
-for epoch in range(2):
+for epoch in range(20):
     running_loss = 0.0
     for i, data in enumerate(trainloader,0): # i是序列脚标，data是具体数据
         inputs, labels = data
-
+        inputs = inputs.to(device)
+        labels = labels.to(device)
         optimizer.zero_grad()
 
         # 前向传播，计算loss，反向传播，权重更新
         outputs = net(inputs)
+        #print(outputs.device)
         loss = criterion(outputs, labels)
         loss.backward()
-        loss.requires_grad_()
-        print(loss.requires_grad)
         
         optimizer.step()
         running_loss = running_loss+loss.item()
         if i % 2000 == 1999:
-            print('[%d, %5d] loss: %.3f' %(epoch+1,i+1,running_loss/2000))
+            avg_running_loss = running_loss/2000
+            print('[%d, %5d] loss: %.3f' %(epoch+1,i+1,avg_running_loss))
+            if avg_running_loss < minimum_loss:
+                minimum_loss = avg_running_loss
+                torch.save(net.state_dict(), PATH)
             running_loss = 0.0
 
 print('Finished Training')
+print('minimum_loss: %.3f' %minimum_loss)
+time_end=time.time()
+print('time cost',time_end-time_start,'s')
 
-#存储训练后的模型
-PATH = './cifar_net.pth'
-torch.save(net.state_dict(), PATH)
+
+
+
