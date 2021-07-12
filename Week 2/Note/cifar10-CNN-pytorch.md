@@ -214,3 +214,91 @@ self.pool = nn.MaxPool2d(2,2) # kernel_size=2 , stride=2
 
 - **stride** – the stride of the window. Default value is `kernel_size`. 非常合理，只有如果kernel_size取2，只有当stride也是2是pooling才能实现下2采样。
 
+<img src="cifar10-CNN-pytorch.assets/image-20210712132829383.png" alt="image-20210712132829383" style="zoom: 33%;" />
+
+### torch.nn.Linear(*in_features*, *out_features*, *bias=True*, *device=None*, *dtype=None*)
+
+```python
+self.fc1 = nn.Linear(16*5*5,120)
+```
+
+- 用于FC层的搭建，输入FC层前，每个样本的 $C \times H \times  W$ 的特征图被拉直成一维向量
+
+### forward(*self*, *x*)
+
+```python
+    def forward(self,x):
+        x = self.pool(F.relu(self.conv1(x))) # conv1，relu，pool
+        x = self.pool(F.relu(self.conv2(x))) # conv2，relu，pool
+        x = x.view(-1,16*5*5)
+        x = F.relu(self.fc1(x)) #过FC层也需要relu激活
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+```
+
+- `forward(self, x)`是定义在 Net 类内部的函数，通过前向传播对网络架构进行定义。
+
+- 很明显，建立了一个两层卷积，两层池化，三层FC，激活函数为relu的CNN网络
+- `tensor.view`是一个改变tensor形状的方法，类似`reshape`，传入的是待改变成的形状。一般第一个参数给-1，即第一个维度由第二个维度给出的数据决定。对于上例的`x = x.view(-1,16*5*5)`,`16*5*5`是输入FC层的特征图的 $C \times H \times W$，测试可以知道`x.shape`为`torch.Size([4, 120])`。为什么第一维的结果是4呢？这是因为在训练时，x实际传入的是`trainset`，而我们的`trainloader`设定的`batch_size=4`，每次传入神经网络的是一个`batch`的数据，即传入4个数据。由此可知输入FC层前，`feature map`拉直成向量后第一个维度表示的是传入的样本数。
+
+## 训练过程
+
+```python
+import torch.optim as optim
+#定义损失函数和优化
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.SGD(net.parameters(),lr=0.001,momentum=0.9)
+#训练
+for epoch in range(2):
+    running_loss = 0.0
+    for i, data in enumerate(trainloader,0): # i是序列脚标，data是具体数据
+        inputs, labels = data
+        optimizer.zero_grad()
+        # 前向传播，计算loss，反向传播，权重更新
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        running_loss = running_loss+loss.item()
+        if i % 2000 == 1999:
+            print('[%d, %5d] loss: %.3f' %(epoch+1,i+1,running_loss/2000))
+            running_loss = 0.0
+print('Finished Training')
+#存储训练后的模型
+PATH = './cifar_net.pth'
+torch.save(net.state_dict(), PATH)
+```
+
+### torch.nn.CrossEntropyLoss(...)
+
+- 在训练之前需要定义损失函数，这里是一个多分类问题，常用到交叉熵损失函数`nn.CrossEntropyLoss`。
+- 该损失函数结合了`nn.LogSoftmax()`和`nn.NLLLoss()`两个函数:
+- `nn.LogSoftmax()`是直接给softmax取对数
+
+![img](cifar10-CNN-pytorch.assets/20190606141331727.png)
+
+- `nn.NLLLoss()`是`negative log likelihood loss`，负对数似然损失函数，但Pytorch的实现就是把target（即index）上的数取出来再加个负号。
+
+  <img src="cifar10-CNN-pytorch.assets/v2-c9f4f1a431e94d390c4d535850b2ef51_720w.jpg" alt="img" style="zoom:80%;" />
+
+  其中其中 $y_i$ 是`one_hot`编码后的数据标签。这个`nll_loss`的结果就是`CrossEntropyLoss`，即：
+
+  ```python
+  CrossEntropyLoss = nll_loss(log_softmax,...)
+  ```
+
+### torch.optim
+
+  - To use `torch.optim`, you have to construct an optimizer object, that will hold the **current state** and will **update the parameters** based on the **computed gradients**.
+
+```python
+optimizer = optim.SGD(net.parameters(),lr=0.001,momentum=0.9)
+```
+
+- 用的最多的应该还是`SGD+Momentum`,此外Adam用的多。
+- 构建好神经网络后，网络的参数都保存在`net.parameter()`函数当中，需要将网络参数送到`optimizer`中。
+
+- 设置学习率`lr`和动量值`momentum`。根据cs231n所讲，`momentum`即网课中的 $\rho$ 一般为0.9或0.99。
+
+- `Optimizer.zero_grad(set_to_none=False)`

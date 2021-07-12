@@ -52,7 +52,7 @@ import torch.optim as optim
 #定义损失函数和优化
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(),lr=0.001,momentum=0.9)
-
+print(net.parameters())
 
 #训练
 for epoch in range(2):
