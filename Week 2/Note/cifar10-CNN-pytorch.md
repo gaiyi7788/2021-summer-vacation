@@ -431,6 +431,8 @@ print('Accuracy of the network on the 10000 test images: %d %%' % (100*correct/t
 
 # 记录一下训练和测试效果
 
+- GTX 1050 ti
+
 - 2 epoch , loss 1.277,GPU 65s ,CPU 74s，测试 accuracy 57%
 - 加大momentum到0.99，loss基本不下降，维持在2.08左右
 - 10 epoch，momentum改回0.9，loss 0.833，测试 accuracy 61%
@@ -438,5 +440,8 @@ print('Accuracy of the network on the 10000 test images: %d %%' % (100*correct/t
 
 分析原因：肯定是过拟合了。
 
-改进：考虑加入dropout试试
+改进：
+
+- 考虑加入dropout试试
+- 学习应用Xiver初始化，现在用的还是默认的
 
