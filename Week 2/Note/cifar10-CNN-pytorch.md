@@ -288,6 +288,8 @@ torch.save(net.state_dict(), PATH)
   CrossEntropyLoss = nll_loss(log_softmax,...)
   ```
 
+- `loss = criterion(outputs, labels)`计算损失
+
 ### torch.optim
 
   - To use `torch.optim`, you have to construct an optimizer object, that will hold the **current state** and will **update the parameters** based on the **computed gradients**.
@@ -301,4 +303,47 @@ optimizer = optim.SGD(net.parameters(),lr=0.001,momentum=0.9)
 
 - 设置学习率`lr`和动量值`momentum`。根据cs231n所讲，`momentum`即网课中的 $\rho$ 一般为0.9或0.99。
 
-- `Optimizer.zero_grad(set_to_none=False)`
+- `Optimizer.zero_grad(set_to_none=False)`  Sets the gradients of all optimized `torch.Tensor`s to zero.每次训练开始之前要用这个函数将之前的训练产生的grid清0。
+- `Optimizer.step()`  Performs a single optimization step (parameter update).
+
+### epoch、batch、iteration的区别
+
+![img](cifar10-CNN-pytorch.assets/v2-18f7f8e6cf5c827217f076483f16e986_720w.png)
+
+```python
+for epoch in range(2):
+    running_loss = 0.0
+    for i, data in enumerate(trainloader,0): # i是序列脚标，data是具体数据
+        inputs, labels = data
+```
+
+- `epoch`是一次完整的训练，而由`trainloader`迭代的是每一个`batch`。我们可以看一下某次的`inputs`：
+
+![image-20210712154025596](cifar10-CNN-pytorch.assets/image-20210712154025596.png)![image-20210712155438627](cifar10-CNN-pytorch.assets/image-20210712155438627.png)  
+
+- 很明显传入了一个`batch`的 4 组数据，每个图是 $3 \times 32 \times 32$。
+- `enumerate() `函数用于将一个序列/迭代器组合为一个索引序列，同时列出数据和数据下标
+- 内层`for`循环每进行一次`batch`的数据更新，称为一次`iteration`。
+
+### 某一次iteration
+
+```python
+        inputs, labels = data
+        optimizer.zero_grad()
+        # 前向传播，计算loss，反向传播，权重更新
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        running_loss = running_loss+loss.item()
+        if i % 2000 == 1999:
+            print('[%d, %5d] loss: %.3f' %(epoch+1,i+1,running_loss/2000))
+            running_loss = 0.0
+```
+
+- 为什么`outputs = net(inputs)`呢？因为pytorch在`nn.Module`中，实现了`__call__`方法，而在`__call__`方法中调用了`forward`函数。Python中，只要在创建类型的时候定义了`__call__()`方法，这个类型就是可调用的。
+- 所以：`outputs = net(inputs)`与`outputs = net.forward(inputs)` 是等价的。
+- `loss = criterion(outputs, labels)`: 用定义好 的损失函数对象计算出`loss`
+
+- `loss.backward()`: 
+
