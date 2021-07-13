@@ -269,7 +269,40 @@ self.fc1 = nn.Linear(16*5*5,120)
 - `forward(self, x)`是定义在 Net 类内部的函数，通过前向传播对网络架构进行定义。
 
 - 很明显，建立了一个两层卷积，两层池化，三层FC，激活函数为relu的CNN网络
-- `tensor.view`是一个改变tensor形状的方法，类似`reshape`，传入的是待改变成的形状。一般第一个参数给-1，即第一个维度由第二个维度给出的数据决定。对于上例的`x = x.view(-1,16*5*5)`,`16*5*5`是输入FC层的特征图的 $C \times H \times W$，测试可以知道`x.shape`为`torch.Size([4, 120])`。为什么第一维的结果是4呢？这是因为在训练时，x实际传入的是`trainset`，而我们的`trainloader`设定的`batch_size=4`，每次传入神经网络的是一个`batch`的数据，即传入4个数据。由此可知输入FC层前，`feature map`拉直成向量后第一个维度表示的是传入的样本数。
+
+- 来分析一下这句：
+
+  ```python
+  F.relu(self.conv1(x))
+  ```
+
+  具体解释可以参见后面==训练过程——某一次iteration==的介绍，这里`self.conv1(x)`相当于是用`__call()__`机制调用了`nn.Conv2d`的`foward`函数，因此实际返回的是一个`tensor`，再传入到`F.relu`函数中(只接收``tensor`)
+
+- `tensor.view`是一个改变`tensor`形状的方法，类似`reshape`，传入的是待改变成的形状。一般第一个参数给-1，即第一个维度由第二个维度给出的数据决定。对于上例的`x = x.view(-1,16*5*5)`,`16*5*5`是输入FC层的特征图的 $C \times H \times W$，测试可以知道`x.shape`为`torch.Size([4, 120])`。为什么第一维的结果是4呢？这是因为在训练时，x实际传入的是`trainset`，而我们的`trainloader`设定的`batch_size=4`，每次传入神经网络的是一个`batch`的数据，即传入4个数据。由此可知输入FC层前，`feature map`拉直成向量后第一个维度表示的是传入的样本数。
+
+### torch.nn.init
+
+- 在pytorch中，有自己默认初始化参数方式，所以在定义好网络结构以后，不进行参数初始化也是可以的。常见的模块如`Conv2d`、`BatchNorm2d`、`Linear`等采用的都是如下的初始化方式：
+
+```python
+def reset_parameters(self) -> None:
+    init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+    if self.bias is not None:
+        fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight)
+        bound = 1 / math.sqrt(fan_in)
+        init.uniform_(self.bias, -bound, bound)
+```
+
+- 用的是kaiming_uniform初始化方法，调用的`torch.nn.init`下的方法，这已经是目前比较好的方法了。
+
+- torch.nn.init下面有许多参数初始化的函数。详见手册吧，这里不表
+- 如果想改初始化方法，可以参考以下方法：
+
+```python
+#变成kaiming_normal初始化
+nn.init.kaiming_normal_(self.conv1.weight)
+nn.init.kaiming_normal_(self.fc1.weight)
+```
 
 ## 训练过程
 
@@ -324,11 +357,31 @@ optimizer = optim.SGD(net.parameters(),lr=0.001,momentum=0.9)
 ```
 
 - 用的最多的应该还是`SGD+Momentum`,此外Adam用的多。
+
 - 构建好神经网络后，网络的参数都保存在`net.parameter()`函数当中，需要将网络参数送到`optimizer`中。
+
+  - 用`net.named_parameters()`可以同时返回参数名和参数对应的object
+
+  - ```python
+    for name,parameters in net.named_parameters():
+        print(name,':',parameters.size())
+    ```
+
+  - ```cpp
+    #output
+    conv1.weight : torch.Size([6, 1, 3, 3])
+    conv1.bias : torch.Size([6])
+    fc1.weight : torch.Size([10, 1350])
+    fc1.bias : torch.Size([10])
+    ...
+    ```
+
+    
 
 - 设置学习率`lr`和动量值`momentum`。根据cs231n所讲，`momentum`即网课中的 $\rho$ 一般为0.9或0.99。
 
 - `Optimizer.zero_grad(set_to_none=False)`  Sets the gradients of all optimized `torch.Tensor`s to zero.每次训练开始之前要用这个函数将之前的训练产生的grid清0。
+
 - `Optimizer.step()`  Performs a single optimization step (parameter update).
 
 ### epoch、batch、iteration的区别
