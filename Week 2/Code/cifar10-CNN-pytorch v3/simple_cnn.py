@@ -37,22 +37,27 @@ import torch.nn.functional as F
 class Net(nn.Module):
     def __init__(self):
         super(Net,self).__init__()
-        self.conv1 = nn.Conv2d(3,6,5)       
-        self.pool = nn.MaxPool2d(2,2) # 池化层没有参数
-        self.conv2 = nn.Conv2d(6,16,5) 
-        self.fc1 = nn.Linear(16*5*5,120)
-        self.fc2 = nn.Linear(120,84)
-        self.fc3 = nn.Linear(84,10)
-        nn.init.kaiming_normal_(self.conv1.weight)
-        nn.init.kaiming_normal_(self.conv2.weight)
-        nn.init.kaiming_normal_(self.fc1.weight)
-        nn.init.kaiming_normal_(self.fc2.weight)
-        nn.init.kaiming_normal_(self.fc3.weight)
+        self.conv1 = nn.Conv2d(3,32,3)       
+        self.conv2 = nn.Conv2d(32,64,3)
+        self.conv3 = nn.Conv2d(64,128,3)  
+                
+        self.pool = nn.MaxPool2d(2,2) # 池化层没有参数        
+                
+        self.bn1 = nn.BatchNorm2d(32)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.bn3 = nn.BatchNorm2d(128)
+        
+        self.fc1 = nn.Linear(128*4*4,512)
+        self.fc2 = nn.Linear(512,120)
+        self.fc3 = nn.Linear(120,10)
+        
+        #self.dr = nn.Dropout(0.5)
 
     def forward(self,x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1,16*5*5)
+        x = self.pool(F.relu(self.bn1(self.conv1(x))))
+        x = self.pool(F.relu(self.bn2(self.conv2(x))))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = x.view(-1,128*4*4)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -60,18 +65,22 @@ class Net(nn.Module):
     
 net = Net()   
 net = net.to(device)
+net.train(True)
 
 import torch.optim as optim
 
 #定义损失函数和优化
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(),lr=0.0008,momentum=0.9)
+optimizer = optim.Adam(net.parameters())
 
 #存储训练后的模型的路径
 PATH = './cifar_net.pth'
 minimum_loss = 100
+
+
+epochs = 50
 #训练
-for epoch in range(20):
+for epoch in range(epochs):
     running_loss = 0.0
     for i, data in enumerate(trainloader,0): # i是序列脚标，data是具体数据
         inputs, labels = data

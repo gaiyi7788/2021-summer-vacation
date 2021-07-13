@@ -186,8 +186,10 @@ class Net(nn.Module):
     def __init__(self):
         super(Net,self).__init__()
         self.conv1 = nn.Conv2d(3,6,5)
+        self.bn1 = nn.BatchNorm2d(6)
         self.pool = nn.MaxPool2d(2,2)
         self.conv2 = nn.Conv2d(6,16,5)
+        self.bn2 = nn.BatchNorm2d(16)
         self.fc1 = nn.Linear(16*5*5,120)
         self.fc2 = nn.Linear(120,84)
         self.fc3 = nn.Linear(84,10)
@@ -304,7 +306,28 @@ nn.init.kaiming_normal_(self.conv1.weight)
 nn.init.kaiming_normal_(self.fc1.weight)
 ```
 
-## 训练过程
+### torch.nn.BatchNorm2d(*num_features*, ...)
+
+```python
+class Net(nn.Module):
+    def __init__(self):
+        super(Net,self).__init__()
+        self.conv1 = nn.Conv2d(3,6,5)
+        self.bn1 = nn.BatchNorm2d(6)
+        #     ...
+    def forward(self,x):
+        x = self.pool(F.relu(self.bn1(self.conv1(x))))
+        #     ...
+```
+
+- BN层一般用在conv之后，非线性激活函数之前。
+- 对 4D 输入（具有额外通道维度的小批量 2D 输入，$N \times C \times H \times W $）应用 Batch Normalization：
+
+![image-20210713150931980](cifar10-CNN-pytorch.assets/image-20210713150931980.png)
+
+​			是一个自学习参数的标准化过程。
+
+- **num_features** – $C$ from an expected input of size $(N, C, H, W)$
 
 ```python
 import torch.optim as optim
@@ -327,6 +350,29 @@ for epoch in range(2):
             print('[%d, %5d] loss: %.3f' %(epoch+1,i+1,running_loss/2000))
             running_loss = 0.0
 ```
+
+### torch.nn.Dropout(*p=0.5*, *inplace=False*)
+
+```python
+self.dr = nn.Dropout(0.5)
+...
+x = self.fc(x)
+x = dr(x) #一般在全连接层加dropout
+```
+
+- `p`是舍弃的神经元的比例
+- 一般来说：`-> CONV/FC -> BN -> Activation-> Dropout -> CONV/FC -> . . .`
+- 直观来看`dropout`的结果是将前一层`fc`层的输出`tensor`中的部分权值置为0
+- `Dropout` 层一般加在全连接层防止过拟合，提升模型泛化能力。很少见到卷积层后接`Dropout`（原因主要是卷积层参数少，不易过拟合）
+- 据说`BN`层和`Dropout`层不要共用，会造成网络性能的下降，同时使用可以将`dropout`放置于`BN`后面。
+- 参考论文[Understanding the Disharmony between Dropout and Batch Normalization by Variance Shift](https://arxiv.org/pdf/1801.05134.pdf)  或博客 [Batch Normalization和Dropout如何搭配使用？](https://www.pianshen.com/article/4249780388/)    概括来说，`dropout`加入后产生方差偏移，再连`BN`层会输出不准确。因此只在所有的`BN`层后面加入`dropout`层，或者采用论文中提出的均匀分布`Dropout` ==Uout==，对方差的偏移的敏感度降低了
+
+### model.train(mode = True)和model.eval()
+
+- 如果模型中有`BN`层和`Dropout`，需要在训练时添加`model.train(mode = True)`。
+- 在测试时添加`model.eval()`，测试阶段不能启用`BN`和 `Dropout`。
+
+## 训练过程
 
 ### torch.nn.CrossEntropyLoss(...)
 
@@ -495,6 +541,23 @@ print('Accuracy of the network on the 10000 test images: %d %%' % (100*correct/t
 
 改进：
 
-- 考虑加入dropout试试
-- 学习应用Xiver初始化，现在用的还是默认的
+- 考虑加入dropout和BN试试
+- 学习应用kaiming初始化，现在用的还是默认的
 
+
+
+
+
+10 epoch，3层conv 3-32-64-128，加入BN，loss 0.3左右，测试 accuracy 76%
+
+10 epoch,再加入dropout，loss 1.491 ，测试 accuracy 71%（loss很高，非常难训练）
+
+三个FC层都加dropout，loss很难下降；
+
+我只在参数最多的第一层加了dropout以后，相对好了一些，之后loss 0.746，测试 accuracy 72%
+
+所以BN+dropout确实有点不太好。
+
+
+
+不加dropout只加BN，50 epoch loss 0.088 ，accuracy 72%，感觉还是过拟合了。
