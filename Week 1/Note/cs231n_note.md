@@ -759,7 +759,7 @@ $W$ 权重是共享的（$W_{hh}$ $W_{xh}$ $W_{hy}$ 均相同）。
 - Selective Search的结果直接投影到经过CNN的特征图上，这样做的好处是，原来建议框重合部分非常多，卷积重复计算严重，而这里每个位置都只计算了一次卷积，大大减少了计算量。
 - 由于建议框大小不一，得到的特征框需要转化为相同大小，需要对建议框区域进行裁剪和缩放。这一步是通过ROI池化层来实现的（ROI表示region of interest即目标）
 
-**ROI Pooling**
+**ROI（Region of interest） Pooling**
 
 ![image-20210709114151913](cs231n_note.assets/image-20210709114151913.png)
 
@@ -775,7 +775,7 @@ $W$ 权重是共享的（$W_{hh}$ $W_{xh}$ $W_{hy}$ 均相同）。
 
 <img src="cs231n_note.assets/image-20210709120713232.png" alt="image-20210709120713232" style="zoom: 50%;" />
 
-利用标准网格上的4个点通过双线性插值得到自己取的绿色点的坐标。
+利用标准网格上的4个点通过双线性插值得到自己取的绿色点的取值。
 
 然后利用4个绿色点，对每个区域进行max pooling，相较 Rol pooling更加准确。
 
@@ -789,7 +789,7 @@ $W$ 权重是共享的（$W_{hh}$ $W_{xh}$ $W_{hy}$ 均相同）。
 
 <img src="cs231n_note.assets/image-20210709135549986.png" alt="image-20210709135549986" style="zoom: 50%;" />
 
-每个anchor处都框出4个不同尺度的anchor box，然后分别分类，看对应K个类别中的哪一类。即每一个锚框对应一个K维向量（0-1编码表示属于哪个类别），所以每个anchor是4K（4个框），整张feature map对应4K x H x W。而另外一个输出是一个值0或者1来判断该区域是不是我们的目标，所以这部分对应K x H x W。
+每个点处都框出K个不同尺度的anchor box，然后分别分类，看对应K个anchor box中的哪一个。即每一个锚框对应一个K维向量（0-1编码表示属于哪个类别），所以每个anchor是4K（4个框），整张feature map对应4K x H x W。而另外一个输出是一个值0或者1来判断该区域是不是我们的目标，所以这部分对应K x H x W。
 
 <img src="cs231n_note.assets/image-20210709141502295.png" alt="image-20210709141502295" style="zoom:50%;" />
 
