@@ -44,7 +44,7 @@ def main(parser_data):
 
     data_transform = {
         "train": transforms.Compose([transforms.ToTensor(),
-                                     transforms.RandomHorizontalFlip(0.5)]),
+                                     transforms.RandomHorizontalFlip(0.5)]), #依概率p垂直翻转
         "val": transforms.Compose([transforms.ToTensor()])
     }
 
@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description=__doc__)
-
+    # 命令行选项
     # 训练设备类型
     parser.add_argument('--device', default='cuda:0', help='device')
     # 训练数据集的根目录(VOCdevkit)

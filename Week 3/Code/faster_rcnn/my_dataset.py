@@ -20,7 +20,7 @@ class VOC2012DataSet(Dataset):
 
         with open(txt_path) as read:
             self.xml_list = [os.path.join(self.annotations_root, line.strip() + ".xml")
-                             for line in read.readlines()]
+                             for line in read.readlines()] # line.strip()去掉换行符
 
         # check file
         assert len(self.xml_list) > 0, "in '{}' file does not find any information.".format(txt_path)
@@ -44,7 +44,8 @@ class VOC2012DataSet(Dataset):
         with open(xml_path) as fid:
             xml_str = fid.read()
         xml = etree.fromstring(xml_str)
-        data = self.parse_xml_to_dict(xml)["annotation"]
+        # 递归遍历“annotation”下的子目录，返回一个字典
+        data = self.parse_xml_to_dict(xml)["annotation"] 
         img_path = os.path.join(self.img_root, data["filename"])
         image = Image.open(img_path)
         if image.format != "JPEG":

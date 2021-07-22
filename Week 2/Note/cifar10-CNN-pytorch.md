@@ -483,18 +483,18 @@ for epoch in range(2):
 PATH = './cifar_net.pth' # 一般保存成pth文件
 torch.save(net.state_dict(), PATH)
 # state_dict()仅返回参数
-net.load_state_dict(torch.load(PATH))
+model_dict=net.load_state_dict(torch.load(PATH))
 ```
 
 ### 保存\加载学习到的参数
 
 - 保存：`torch.save(net.state_dict(), PATH)`
-- 加载：`net.load_state_dict(torch.load(PATH))` （要求事先有model，且与保存的model相同）
+- 加载：`model_dict=net.load_state_dict(torch.load(PATH))` （要求事先有model，且与保存的model相同）
 
 ### 保存\加载整个model的状态
 
 - 保存：`torch.save(net,PATH)`
-- 加载：`torch.load(PATH)`
+- 加载：`model_dict=torch.load(PATH)`
 
 ## 测试过程
 
