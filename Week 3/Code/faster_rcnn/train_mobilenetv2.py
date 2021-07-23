@@ -63,7 +63,7 @@ def main():
     # VOCdevkit -> VOC2012 -> ImageSets -> Main -> train.txt
     train_data_set = VOC2012DataSet(VOC_root, data_transform["train"], "train.txt")
     # 注意这里的collate_fn是自定义的，因为读取的数据包括image和targets，不能直接使用默认的方法合成batch
-    batch_size = 8
+    batch_size = 2
     nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 8])  # number of workers
     print('Using %g dataloader workers' % nw)
     train_data_loader = torch.utils.data.DataLoader(train_data_set,

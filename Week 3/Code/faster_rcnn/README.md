@@ -30,8 +30,8 @@
 * ResNet50+FPN backbone: https://download.pytorch.org/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth
 * 注意，下载的预训练权重记得要重命名，比如在train_resnet50_fpn.py中读取的是```fasterrcnn_resnet50_fpn_coco.pth```文件，
   不是```fasterrcnn_resnet50_fpn_coco-258fb6c6.pth```
- 
- 
+
+
 ## 数据集，本例程使用的是PASCAL VOC2012数据集
 * Pascal VOC2012 train/val数据集下载地址：http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar
 * 如果不了解数据集或者想使用自己的数据集进行训练，请参考我的bilibili：https://b23.tv/F1kSCK

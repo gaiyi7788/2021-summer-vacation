@@ -79,9 +79,11 @@ class FasterRCNNBase(nn.Module):
             original_image_sizes.append((val[0], val[1]))
         # original_image_sizes = [img.shape[-2:] for img in images]
 
+        # images是一个batch的图片组成的list，batch中的图片尺寸可能不一样。对于VOC2012数据集，大约在375*500
         images, targets = self.transform(images, targets)  # 对图像进行预处理,将图像大小统一
+        #输出尺寸为800*1088，这是预设的参数
 
-        # print(images.tensors.shape)
+        # features尺寸都一样，因此是tensor
         features = self.backbone(images.tensors)  # 将图像输入backbone得到特征图
         # 有些backbone得到的特征图不止一张
         if isinstance(features, torch.Tensor):  # 若只在一层特征层上预测，将feature放入有序字典中，并编号为‘0’
@@ -262,7 +264,7 @@ class FasterRCNN(FasterRCNNBase):
                  box_roi_pool=None, box_head=None, box_predictor=None,
                  # 移除低目标概率      fast rcnn中进行nms处理的阈值   对预测结果根据score排序取前100个目标
                  box_score_thresh=0.05, box_nms_thresh=0.5, box_detections_per_img=100,
-                 box_fg_iou_thresh=0.5, box_bg_iou_thresh=0.5,   # fast rcnn计算误差时，采集正负样本设置的阈值 大于0.5正样本，小于0.5 负样本
+                 box_fg_iou_thresh=0.5, box_bg_iou_thresh=0.5,   # fast rcnn计算误差时，采集正负样本设置的阈值 大于0.5正样本，小于0.5负样本
                  box_batch_size_per_image=512, box_positive_fraction=0.25,  # fast rcnn计算误差时采样的样本数，以及正样本占所有样本的比例
                  bbox_reg_weights=None):
         if not hasattr(backbone, "out_channels"):

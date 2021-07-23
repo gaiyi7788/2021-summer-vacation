@@ -328,3 +328,54 @@ print(package.re, package.urllib, package.sys, package.os)
 
 ## torchvision.ops.MultiScaleRoIAlign
 
+
+
+## isinstance() 
+
+isinstance() 函数来判断一个对象是否是一个已知的类型。isinstance() 会认为子类是一种父类类型，考虑继承关系。
+
+```python
+isinstance(object, classinfo)
+
+```
+
+> - object -- 实例对象。
+> - classinfo -- 可以是直接或间接类名、基本类型或者由它们组成的元组。
+
+```python
+isinstance(min_size, (list, tuple)) #是list和tuple中的一个就返回True
+
+```
+
+## torch.as_tensor()
+
+```python
+mean = torch.as_tensor(self.image_mean, dtype=dtype, device=device)
+
+```
+
+> - 如果data已经是一个tensor并且与返回的tensor具有相同的类型和相同的设备，那么不会发生复制，返回的tensor就是data，否则进行复制并返回一个新的tensor。且如果具有requires_grad=True，并保留计算图。
+>
+> - 相似的，如果data是一个相应dtype的ndarray，并且设备是cpu（numpy中的ndarray只能存在于cpu中），那么也不会进行任何复制，但是返回的是tensor，只是使用的内存相同。
+
+## torch.nn.functional.interpolate
+
+```python
+    # interpolate利用插值的方法缩放图片
+    # image[None]操作是在最前面添加batch维度[C, H, W] -> [1, C, H, W]
+    # bilinear只支持4D Tensor
+image = torch.nn.functional.interpolate(
+            image[None], scale_factor=scale_factor, mode="bilinear", recompute_scale_factor=True)[0]
+
+```
+
+> - input (Tensor) – 输入张量
+>
+> - scale_factor (float or Tuple[float]) – 指定输出为输入的多少倍数。如果输入为tuple，其也要制定为tuple类型
+>
+> - mode (str) – 可使用的上采样算法，有’nearest’, ‘linear’, ‘bilinear’, ‘bicubic’ , ‘trilinear’和’area’. 默认使用’nearest’
+
+## list拼接
+
+> python合并list有几种方法：
+
