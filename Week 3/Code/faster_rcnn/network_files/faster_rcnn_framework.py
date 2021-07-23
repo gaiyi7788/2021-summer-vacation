@@ -7,9 +7,9 @@ from torch import nn, Tensor
 import torch.nn.functional as F
 from torchvision.ops import MultiScaleRoIAlign
 
-from .roi_head import RoIHeads
-from .transform import GeneralizedRCNNTransform
-from .rpn_function import AnchorsGenerator, RPNHead, RegionProposalNetwork
+from network_files.roi_head import RoIHeads
+from network_files.transform import GeneralizedRCNNTransform
+from network_files.rpn_function import AnchorsGenerator, RPNHead, RegionProposalNetwork
 
 
 class FasterRCNNBase(nn.Module):
@@ -73,16 +73,17 @@ class FasterRCNNBase(nn.Module):
                                      "Tensor, got {:}.".format(type(boxes)))
 
         original_image_sizes = torch.jit.annotate(List[Tuple[int, int]], [])
-        for img in images:
-            val = img.shape[-2:]
+        for img in images: # img[C,H,W]
+            val = img.shape[-2:] # 获得[H,W]
             assert len(val) == 2  # 防止输入的是个一维向量
             original_image_sizes.append((val[0], val[1]))
         # original_image_sizes = [img.shape[-2:] for img in images]
 
-        images, targets = self.transform(images, targets)  # 对图像进行预处理
+        images, targets = self.transform(images, targets)  # 对图像进行预处理,将图像大小统一
 
         # print(images.tensors.shape)
         features = self.backbone(images.tensors)  # 将图像输入backbone得到特征图
+        # 有些backbone得到的特征图不止一张
         if isinstance(features, torch.Tensor):  # 若只在一层特征层上预测，将feature放入有序字典中，并编号为‘0’
             features = OrderedDict([('0', features)])  # 若在多层特征层上预测，传入的就是一个有序字典
 
@@ -244,12 +245,13 @@ class FasterRCNN(FasterRCNNBase):
 
     """
 
-    def __init__(self, backbone, num_classes=None,
+    def __init__(self, backbone, num_classes=None, #20类+背景，21
                  # transform parameter
                  min_size=800, max_size=1333,      # 预处理resize时限制的最小尺寸与最大尺寸
                  image_mean=None, image_std=None,  # 预处理normalize时使用的均值和方差
                  # RPN parameters
                  rpn_anchor_generator=None, rpn_head=None,
+                #### 这里是不是有问题，nms之前应该比2000多才对吧
                  rpn_pre_nms_top_n_train=2000, rpn_pre_nms_top_n_test=1000,    # rpn中在nms处理前保留的proposal数(根据score)
                  rpn_post_nms_top_n_train=2000, rpn_post_nms_top_n_test=1000,  # rpn中在nms处理后保留的proposal数
                  rpn_nms_thresh=0.7,  # rpn中进行nms处理时使用的iou阈值
@@ -260,7 +262,7 @@ class FasterRCNN(FasterRCNNBase):
                  box_roi_pool=None, box_head=None, box_predictor=None,
                  # 移除低目标概率      fast rcnn中进行nms处理的阈值   对预测结果根据score排序取前100个目标
                  box_score_thresh=0.05, box_nms_thresh=0.5, box_detections_per_img=100,
-                 box_fg_iou_thresh=0.5, box_bg_iou_thresh=0.5,   # fast rcnn计算误差时，采集正负样本设置的阈值
+                 box_fg_iou_thresh=0.5, box_bg_iou_thresh=0.5,   # fast rcnn计算误差时，采集正负样本设置的阈值 大于0.5正样本，小于0.5 负样本
                  box_batch_size_per_image=512, box_positive_fraction=0.25,  # fast rcnn计算误差时采样的样本数，以及正样本占所有样本的比例
                  bbox_reg_weights=None):
         if not hasattr(backbone, "out_channels"):

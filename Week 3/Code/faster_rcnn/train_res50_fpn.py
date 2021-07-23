@@ -66,7 +66,7 @@ def main(parser_data):
                                                     shuffle=True,
                                                     pin_memory=True,
                                                     num_workers=nw,
-                                                    collate_fn=train_data_set.collate_fn)
+                                                    collate_fn=train_data_set.collate_fn) # 不用默认方法，而是打包
 
     # load validation data set
     # VOCdevkit -> VOC2012 -> ImageSets -> Main -> val.txt

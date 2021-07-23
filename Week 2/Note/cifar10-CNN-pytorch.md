@@ -175,6 +175,7 @@ testloader = torch.utils.data.DataLoader(
 - `batch_size`：每个batch加载多少个样本(默认: 1)
 - `shuffle`：随机打乱顺序，一般在训练数据中会采用。
 - `num_workers`：这个参数必须大于等于0，0的话表示数据导入在主进程中进行，其他大于0的数表示通过多个进程来导入数据，可以加快数据导入速度。
+- `collate_fn`
 
 ## 定义网络模型
 
