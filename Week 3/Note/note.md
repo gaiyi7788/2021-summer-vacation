@@ -379,3 +379,23 @@ image = torch.nn.functional.interpolate(
 
 > python合并list有几种方法：
 
+# 2021.7.24
+
+## tensor的某种计算
+
+```python
+>>> import torch
+>>> a = torch.tensor([1,2,3])
+>>> b = torch.tensor([4,5,6])
+>>> a[:,None]
+tensor([[1],
+        [2],
+        [3]])
+# [r1, r2, r3]' * [s1, s2, s3]
+>>> a[:,None]*b[None,:] # 扩展维度
+tensor([[ 4,  5,  6],
+        [ 8, 10, 12],
+        [12, 15, 18]])
+
+```
+

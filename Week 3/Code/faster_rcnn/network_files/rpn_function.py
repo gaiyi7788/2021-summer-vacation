@@ -104,7 +104,7 @@ class AnchorsGenerator(nn.Module):
         # anchors模板都是以(0, 0)为中心的anchor
         cell_anchors = [
             self.generate_anchors(sizes, aspect_ratios, dtype, device)
-            for sizes, aspect_ratios in zip(self.sizes, self.aspect_ratios)
+            for sizes, aspect_ratios in zip(self.sizes, self.aspect_ratios) # 生成列表
         ]
         self.cell_anchors = cell_anchors
 
@@ -129,8 +129,8 @@ class AnchorsGenerator(nn.Module):
 
         # 遍历每个预测特征层的grid_size，strides和cell_anchors
         for size, stride, base_anchors in zip(grid_sizes, strides, cell_anchors):
-            grid_height, grid_width = size
-            stride_height, stride_width = stride
+            grid_height, grid_width = size #特征图的大小
+            stride_height, stride_width = stride #都是32
             device = base_anchors.device
 
             # For output anchor, compute [x_center, y_center, x_center, y_center]
@@ -158,7 +158,7 @@ class AnchorsGenerator(nn.Module):
 
         return anchors  # List[Tensor(all_num_anchors, 4)]
 
-    def cached_grid_anchors(self, grid_sizes, strides):
+    def cached_grid_anchors(self, grid_sizes, strides): #每个特征图的尺寸，特征图到原图的映射信息
         # type: (List[List[int]], List[List[Tensor]]) -> List[Tensor]
         """将计算得到的所有anchors信息进行缓存"""
         key = str(grid_sizes) + str(strides)
