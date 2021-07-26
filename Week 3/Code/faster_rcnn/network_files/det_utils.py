@@ -213,7 +213,7 @@ class BoxCoder(object):
         # 将预测的bbox回归参数应用到对应anchors上得到预测bbox的坐标
         pred_boxes = self.decode_single(
             rel_codes, concat_boxes
-        )
+        ) #rel_codes是预测的回归参数，pred_boxes对应的是根据预测的回归参数估计的预测框的坐标
 
         # 防止pred_boxes为空时导致reshape报错
         if box_sum > 0:

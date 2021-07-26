@@ -1,5 +1,9 @@
 [TOC]
 
+# 2021.7.21
+
+理顺整个faster-rcnn的流程
+
 # 2021.7.22
 
 ## `argparse`--- 命令行选项
@@ -398,4 +402,43 @@ tensor([[ 4,  5,  6],
         [12, 15, 18]])
 
 ```
+
+## torch.range() 和 torch.arange() 的区别
+
+```python
+>>> y=torch.range(1,6)
+>>> y
+tensor([1., 2., 3., 4., 5., 6.])
+>>> y.dtype
+torch.float32
+
+>>> z=torch.arange(1,6)
+>>> z
+tensor([1, 2, 3, 4, 5])
+>>> z.dtype
+torch.int64
+
+```
+
+> 1. `torch.range(start=1, end=6)` 的结果是会包含`end`的，
+>    而`torch.arange(start=1, end=6)`的结果并不包含`end`。
+> 2. 两者创建的`tensor`的类型也不一样。
+
+## torch.ops.torchvision.nms
+
+> `torchvision.ops.``nms`(*boxes: torch.Tensor*, *scores: torch.Tensor*, *iou_threshold: float*) → torch.Tensor
+
+> Parameters
+>
+> - **boxes** (*Tensor**[**N*,*4**]**)*) – boxes to perform NMS on. They are expected to be in `(x1, y1, x2, y2)` format with `0 <= x1 < x2` and `0 <= y1 < y2`.
+> - **scores** (*Tensor**[**N,4**]**)*) – scores for each one of the boxes
+> - **iou_threshold** ([*float*](https://docs.python.org/3/library/functions.html#float)) – 丢弃所有 IoU > iou_threshold 的重叠框
+
+# 2021.7.25
+
+有事外出，暂停一天
+
+# 2021.7.26
+
+## torch.randperm()
 

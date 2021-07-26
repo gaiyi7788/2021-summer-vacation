@@ -35,7 +35,7 @@ def nms(boxes, scores, iou_threshold):
     return torch.ops.torchvision.nms(boxes, scores, iou_threshold)
 
 
-def batched_nms(boxes, scores, idxs, iou_threshold):
+def batched_nms(boxes, scores, idxs, iou_threshold): # 为了针对不同的特征层进行nms
     # type: (Tensor, Tensor, Tensor, float) -> Tensor
     """
     Performs non-maximum suppression in a batched fashion.
