@@ -199,7 +199,7 @@ class RegionProposalNetwork(torch.nn.Module):
 
 - 1×1卷积用来改变通道数
 - 上路每个anchor分配两个值分别表示前景和背景对应的概率`objectness`
-  - 特别注意：论文里采用两个值来表示前景后景分类概率，也可以采用一个值，通过大于小于0.5划分前后景。
+  - 特别注意：论文里**采用两个值来表示前景后景分类概率**，也可以采用一个值，通过大于小于0.5划分前后景。
 - 下路每个anchor分配4个值(dx,dy,dh,dw)用于表示回归参数，即proposal相对anchor(x,y,h,w)的偏移量`pred_bbox_deltas`
 - 注意在RPNhead里已经分配给了anchor的信息存储空间，后面的`Anchor Generator`才是生成anchor。
 
@@ -238,7 +238,7 @@ $w_a$和$h_a$是权重，一般取1
 > - 用NMS对proposals进行剔除
 > - NMS之后再次根据预测的前景概率` objectness`由高到低对每个proposal进行排序，只保留靠前的若干proposals，**此时大概剩余2000个proposal**
 
-## loss function
+将这2000个proposals传到后续的fast-rcnn网络中。
 
 ### 样本选择
 
@@ -256,8 +256,25 @@ $w_a$和$h_a$是权重，一般取1
 > - 在正常情况下，正样本数量远远小于负样本数，引入样本均衡性的问题
 > - **需要记录下与每个正样本的anchor匹配最好的GT（即IOU最大的GT），给后面bbox回归使用**
 > - **正样本标记为1，负样本标记为0，不参加训练的样本标记为-1**
+> - RPN训练时只有两类，目标1（正样本）和背景0（负样本）
 
-### loss function组成
+### RPN loss function
+
+```python
+            # 计算每个anchors最匹配的gt，并将anchors进行分类，前景，背景以及废弃的anchors
+            # labels 前景1，背景0，舍弃-1，这里的标签仅是用来挑选出参与训练的样本
+            labels, matched_gt_boxes = self.assign_targets_to_anchors(anchors, targets) 
+            # 结合anchors以及对应的gt，计算regression参数
+            regression_targets = self.box_coder.encode(matched_gt_boxes, anchors)
+            loss_objectness, loss_rpn_box_reg = self.compute_loss(
+                objectness, pred_bbox_deltas, labels, regression_targets
+            )
+            losses = {
+                "loss_objectness": loss_objectness,
+                "loss_rpn_box_reg": loss_rpn_box_reg
+            }
+            
+```
 
 <img src="faster-rcnn最终总结.assets/image-20210726213819019.png" alt="image-20210726213819019" style="zoom: 50%;" />
 
@@ -306,4 +323,55 @@ t_w^* = ln(w^*/w_a) \\
 t_h^* = ln(h^*/h_a) \\
 $$
 代入$L_{reg}$的公式计算即可。
+
+
+
+
+
+## 样本划分
+
+在前面得到了2000个proposals以后，需要进行进一步筛选，对每个proposal打标签，并且划分出正负样本。
+
+> - 计算每个proposal与所有GT之间的IOU
+>
+>   - **选出正样本**：与任意GT的IOU大于等于**0.5**的proposal
+>
+>   - **选出负样本**：与所有GT的IOU都小于**0.5**的anchor
+>
+> - 从这2000个样本中随机选出**512个样本**(可设定)，且**正样本数：负样本数 = 1：3**
+>
+> - 正样本的标签需要修改为类别标签。与RPN的训练不同，fast-rcnn训练时一共有 cls_num+1类（cls_num个待分类别和1个背景类），比如标签可能为：[0,0,0,0,0,10,0,0,15,0,0,7...]，其中10，15，7分别为类别标签，对于20分类的问题，0为背景，1-20为类别标签。
+>
+> - **需要记录下与每个正样本的anchor匹配最好的GT（即IOU最大的GT），给后面bbox回归使用**
+
+## ROI (Region of interest) Pooling
+
+将选出来的512个proposa传入ROI Pooling
+
+对于传统的CNN（如AlexNet和VGG），当网络训练好后输入的图像尺寸必须是固定值，同时网络输出也是固定大小的vector or matrix，因为最后的FC层需要固定大小的输入。有2种解决办法：
+
+1. 从图像中crop一部分传入网络
+2. 将图像warp成需要的大小后传入网络
+
+![img](faster-rcnn最终总结.assets/v2-e525342cbde476a11c48a6be393f226c_720w.jpg)
+
+可以看到无论采取那种办法都不好，要么crop后破坏了图像的完整结构，要么warp破坏了图像原始形状信息。
+
+<img src="faster-rcnn最终总结.assets/image-20210709114151913.png" alt="image-20210709114151913" style="zoom: 67%;" />
+
+候选区域投影过来的时候要对齐到区域顶点（比如将2.5对齐到2）
+
+划分时也尽可能等划分（比如5划分成2和3）
+
+**改进：ROI Align**
+
+<img src="faster-rcnn最终总结.assets/image-20210709115814128.png" alt="image-20210709115814128" style="zoom: 67%;" />
+
+直接进行投影，不对齐到整点，并且在区域内选择几个等间隔的点。
+
+<img src="faster-rcnn最终总结.assets/image-20210709120713232.png" alt="image-20210709120713232" style="zoom: 67%;" />
+
+利用标准网格上的4个点通过双线性插值得到自己取的绿色点的取值。然后利用4个绿色点，对每个区域进行max pooling，相较 Rol pooling更加准确。
+
+> 对于本文，ROI Pooling不改变通道数，将输入的proposal的尺寸全部调整为7*7
 

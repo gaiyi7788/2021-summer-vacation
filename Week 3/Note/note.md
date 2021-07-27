@@ -442,3 +442,27 @@ torch.int64
 
 ## torch.randperm()
 
+> 返回一个0~n-1的数组，随机打散的
+
+```python
+>>> t = torch.randperm(8)
+tensor([5, 4, 2, 6, 7, 3, 1, 0])
+
+```
+
+## torch.unsqueeze() 和 torch.squeeze()
+
+```python
+torch.unsqueeze(input, dim, out=None)
+
+```
+
+> - 扩展维度，返回一个新的张量，对输入的既定位置插入维度 1
+
+```python
+torch.squeeze(input, dim=None, out=None)
+
+```
+
+> 将输入张量形状中的1 去除并返回。 如果输入是形如(A×1×B×1×C×1×D)，那么输出形状就为： (A×B×C×D)
+
