@@ -324,10 +324,6 @@ t_h^* = ln(h^*/h_a) \\
 $$
 代入$L_{reg}$的公式计算即可。
 
-
-
-
-
 ## 样本划分
 
 在前面得到了2000个proposals以后，需要进行进一步筛选，对每个proposal打标签，并且划分出正负样本。
@@ -345,6 +341,8 @@ $$
 > - **需要记录下与每个正样本的anchor匹配最好的GT（即IOU最大的GT），给后面bbox回归使用**
 
 ## ROI (Region of interest) Pooling
+
+![image-20210727184006197](faster-rcnn最终总结.assets/image-20210727184006197.png)
 
 将选出来的512个proposa传入ROI Pooling
 
@@ -373,5 +371,14 @@ $$
 
 利用标准网格上的4个点通过双线性插值得到自己取的绿色点的取值。然后利用4个绿色点，对每个区域进行max pooling，相较 Rol pooling更加准确。
 
-> 对于本文，ROI Pooling不改变通道数，将输入的proposal的尺寸全部调整为7*7
+> 对于本文，ROI Pooling不改变通道数，将输入的proposal的尺寸全部调整为7*7，送到后续的MLP
 
+## fast-rcnn loss function
+
+![image-20210727184147277](faster-rcnn最终总结.assets/image-20210727184147277.png)
+
+> 将rpn_loss_function和fast_rcnn_loss_function一共4项加和，得到总的loss function，进行联合训练。
+
+## post process
+
+在测试阶段（训练阶段不需要）根据图像预处理的归一化、尺度缩放等信息，进行去归一化，等比例放缩恢复到原输入图像，进行可视化显示，完成分类与定位。
