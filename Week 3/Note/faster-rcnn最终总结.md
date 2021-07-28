@@ -103,6 +103,20 @@ anchors = self.anchor_generator(images, features)
 
 <img src="faster-rcnn最终总结.assets/image-20210726213227846.png" alt="image-20210726213227846" style="zoom:50%;" />
 
+### NMS
+
+NMS用于剔除图像中检出的冗余bbox，标准NMS的具体做法为：
+
+> **step-1**：将所有检出的output_bbox按cls score划分（如pascal voc分20个类，也即将output_bbox按照其对应的cls score划分为21个集合，1个bg类，只不过bg类就没必要做NMS而已）；
+>
+> **step-2**：在每个集合内根据各个bbox的cls score做降序排列，得到一个降序的list_k；
+>
+> **step-3**：从list_k中top1 cls score开始，计算该bbox_x与list中其他bbox_y的IoU，若IoU大于阈值T，则剔除该bbox_y，最终保留bbox_x，从list_k中取出；
+>
+> **step-4**：选择list_k中筛选完之后的top1 cls score，重复step-3中的迭代操作，直至list_k中所有bbox都完成筛选；
+>
+> **step-5**：对每个集合的list_k，重复step-3、4中的迭代操作，直至所有list_k都完成筛选；
+
 ### 生成proposals
 
 ```python
@@ -195,7 +209,7 @@ $$
 L_{reg} = smooth_{L_1}(t_i-t_i^*)
 $$
 
-`t`与前面生成proposal提到的`d`一样，都是回归参数，表示偏移量。
+$t$​与前面生成proposal提到的$d$一样，都是回归参数，表示偏移量。
 
 ![img](https://upload-images.jianshu.io/upload_images/4264437-230129b9f393d493.png?imageMogr2/auto-orient/strip|imageView2/2/w/675/format/webp)
 
@@ -205,7 +219,11 @@ $$
 
 <img src="faster-rcnn最终总结.assets/image-20210726193525619.png" alt="image-20210726193525619" style="zoom:50%;" />
 
-由RPN网络预测选出的**正样本anchor**得到的回归参数pred_bbox_deltas：$[t_x,t_y,t_w,t_h]$
+由RPN网络预测选出的**正样本anchor**得到的回归参数pred_bbox_deltas：$[t_x,t_y,t_w,t_h]$​
+
+这里其实由于anchor和GT的IOU比较大，$d_*$变换可以看成是一种**线性变换**，即：$d_*(A) = W^T_*\phi(A)$，其中$\phi(A)$是从anchor中提取得到的特征。本质是通过对$W^T_*$的学习估计$d_*$​变换
+
+**(这段理论是在R-CNN提出的，我个人认为只要有监督标签和待优化变量，直接优化就可以了)**
 
 由正样本anchor到与其匹配最好的GT（挑选样本的时候已经记录）的偏移量作为回归标签：
 $$
