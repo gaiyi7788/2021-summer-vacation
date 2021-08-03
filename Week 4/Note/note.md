@@ -210,6 +210,8 @@ SSD中共有**不同大小，不同位置**的anchor**8732个**
 
 文章提出了一种新的**训练方法–联合训练算法** ，基本思路就是：同时在检测数据集和分类数据集上训练物体检测器（Object Detectors ），**用检测数据集的数据学习物体的准确位置，用分类数据集的数据来增加分类的类别量、提升健壮性。**
 
+**相较yolov1的7×7网格，yolov2为13×13 。**
+
 ### Better
 
 We focus mainly on improving recall and localization while maintaining classifification accuracy.
@@ -258,9 +260,48 @@ We choose *k* = 5 as a good tradeoff between model complexity and high recall.
 
 <img src="note.assets/image-20210803221343298.png" alt="image-20210803221343298" style="zoom:33%;" /><img src="note.assets/image-20210803220810251.png" alt="image-20210803220810251" style="zoom:50%;" />
 
-由于 ![[公式]](https://www.zhihu.com/equation?tex=t_x%2Ct_y) 的取值没有任何约束，因此预测边框的中心可能出现在任何位置，训练早期阶段不容易稳定。YOLOv2调整了预测公式，**将预测边框的中心约束在特定gird网格内**。 ![[公式]](https://www.zhihu.com/equation?tex=%5C%5C+b_x%3D%CF%83%28t_x%29%2Bc_x++%5C%5C+b_y%3D%CF%83%28t_y%29%2Bc_y++%5C%5C+b_w%3Dp_we%5E%7Bt_w%7D++%5C%5C+b_h%3Dp_he%5E%7Bt_h%7D++%5C%5C+Pr%28object%29%E2%88%97IOU%28b%2Cobject%29%3D%CF%83%28t_o%29+)
+由于 ![[公式]](https://www.zhihu.com/equation?tex=t_x%2Ct_y) 的取值没有任何约束，因此预测边框的中心可能出现在任何位置，训练早期阶段不容易稳定。YOLOv2调整了预测公式，**将预测边框的中心约束在特定gird网格内**。因为每个grid负责预测单独的bbox，所有必须将预测的bbox限制在这个grid之中。对比faster-rcnn是对整张图进行bbox的预测回归，因此无需对offset进行限制，而yolo是划分了grid的。
+
+ ![[公式]](https://www.zhihu.com/equation?tex=%5C%5C+b_x%3D%CF%83%28t_x%29%2Bc_x++%5C%5C+b_y%3D%CF%83%28t_y%29%2Bc_y++%5C%5C+b_w%3Dp_we%5E%7Bt_w%7D++%5C%5C+b_h%3Dp_he%5E%7Bt_h%7D++%5C%5C+Pr%28object%29%E2%88%97IOU%28b%2Cobject%29%3D%CF%83%28t_o%29+)
 
 其中， ![[公式]](https://www.zhihu.com/equation?tex=b_x%2Cb_y%2Cb_w%2Cb_h) 是预测边框的中心和宽高。 ![[公式]](https://www.zhihu.com/equation?tex=Pr%28object%29%E2%88%97IOU%28b%2Cobject%29) 是预测边框的置信度confidence，YOLOv1是直接预测confidence的值，这里对预测参数 ![[公式]](https://www.zhihu.com/equation?tex=t_o) 进行σ变换后作为置信度的值。 ![[公式]](https://www.zhihu.com/equation?tex=c_x%2Cc_y) **是当前网格左上角到图像左上角的距离**，要先将网格大小归一化，即令一个网格的宽=1，高=1。 ![[公式]](https://www.zhihu.com/equation?tex=p_w%2Cp_h) 是先验框的宽和高。 σ是sigmoid函数。 ![[公式]](https://www.zhihu.com/equation?tex=t_x%2Ct_y%2Ct_w%2Ct_h%2Ct_o) 是要学习的参数，分别用于预测边框的中心和宽高，以及置信度。
 
+#### Fine-Grained Features（passthrough层检测细粒度特征）
 
+<img src="note.assets/image-20210803223811126.png" alt="image-20210803223811126" style="zoom:50%;" />
 
+![image-20210803223721789](note.assets/image-20210803223721789.png)
+
+- 每个子模块convolutional，由conv2d、BN、Leaky relu组成
+- 26×26×64经过PassThrough Layer，变成13×13×256；
+
+- 13×13×1024和13×13×256进行concatenate拼接得到13×13×1280的输出
+- 注意最终的下采样的scale是416/13=32
+
+#### Multi-ScaleTraining（多尺度图像训练）
+
+将网络的输入由448改为416，这样使得得到的feature map只有一个中心点，因为经过32的下采样率，最后得到**13*13的feature map**，是奇数。因为大的物体通常在图片的中间，所以最好使用一个中心点来负责预测这个物体。
+
+作者希望YOLO v2能健壮的运行于不同尺寸的图片之上，YOLO v2每迭代几次都会改变网络参数。每10个Batches，网络会随机地选择一个新的**输入图片尺寸**，由于使用了下采样参数是32，所以不同的尺寸大小也选择为32的倍数{320，352…..608}，最小320×320，最大608×608，网络会自动改变尺寸，并继续训练的过程。
+
+mAP有1.8%的提升。
+
+###  Faster
+
+#### Training for classifification
+
+Darknet-19有19个convolutional和5个maxpooling层，采用全局平均池化的方法进行预测，并采用 ![[公式]](https://www.zhihu.com/equation?tex=1%2A1) 卷积来压缩 ![[公式]](https://www.zhihu.com/equation?tex=3%2A3) 卷积之间的特征表示。使用批处理归一化来稳定训练，加快收敛速度，并对模型进行规范化。
+
+#### Training for detection
+
+为了把分类网络改成检测网络，移除了Darknet-19最后一个卷积层，添加3个3×3的卷积层，再1×1卷积层，输出通道为125。对于VOC数据集，预测5种boxes，**每个box包含5个坐标值和20个类别**，所以总共是5 * （5+20）= 125个输出维度。
+
+注意与yolov1相比，v2中每个box都对应20个类别的概率，而v1中无论有多少box，一个grid中只能预测一组，即最多预测一种物体。
+
+### Stronger
+
+#### Hierarchical classification（分层分类）
+
+作者通过ImageNet训练分类、COCO和VOC数据集来训练检测，这是一个很有价值的思路，可以让我们达到比较优的效果。 通过将两个数据集混合训练，**如果遇到来自分类集的图片则只计算分类的Loss，遇到来自检测集的图片则计算完整的Loss。**
+
+分层树：
