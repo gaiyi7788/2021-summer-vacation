@@ -153,3 +153,114 @@ SSD中共有**不同大小，不同位置**的anchor**8732个**
 
 回老家了，要忙着走亲戚，这两天暂时没有办法学习。
 
+# 2021.8.3
+
+## yolov1
+
+参考：[yolov1算法解读](https://zhuanlan.zhihu.com/p/362758477)   [【目标检测论文阅读】YOLOv1](https://zhuanlan.zhihu.com/p/115759795)
+
+将一幅图像分成SxS个网格(grid cell)，如果某个object的中心落在这个网格中，则这个网格就负责预测这个object。**在yolov1的论文中，S = 7**。例如：下图中狗的中心落在红色单元格内，则这个单元格负责预测狗。
+
+每个网格需要预测B个box（yolov1的文章中B=2）
+
+<img src="note.assets/v2-8e0328c4effdb02961b755a9652fb5a3_1440w.jpg" alt="img" style="zoom: 50%;" />
+
+### Backbone
+
+![image-20210803205844664](note.assets/image-20210803205844664.png)
+
+主要是看一下最后FC的部分：
+
+- 7×7×1024（flatten）fc → 4096 reshape → 7×7×30
+- **每个grid**预测2个box的4个坐标，每个box还要预测一个confidence值，还有20个类别信息
+
+<img src="note.assets/image-20210803202526621.png" alt="image-20210803202526621" style="zoom: 50%;" />
+
+
+
+### 预测部分
+
+**① 2个bounding box的位置：**对于每个单元格，YOLOv1会预测出2个bounding box，每个bounding box需要4个数值(x, y, w, h)来表示其位置
+
+**②** **2个bounding box的置信度(confidence)：**对于每个单元格，YOLOv1会预测出2个置信度，分别对应该单元格预测两个bounding box。每一个置信度包含两个方面，一是该边界框含有目标的可能性大小，二是该边界框的准确度。前者记为![[公式]](https://www.zhihu.com/equation?tex=Pr%28object%29)，当该边界框是背景时（即不包含目标），此时![[公式]](https://www.zhihu.com/equation?tex=Pr%28object%29%3D0)；当该边界框包含目标时，![[公式]](https://www.zhihu.com/equation?tex=Pr%28object%29%3D1)。后者即边界框的准确度可以用预测框与实际框（ground truth）的IOU（intersection over union，交并比）来表征，记为![[公式]](https://www.zhihu.com/equation?tex=%5Ctext%7BIOU%7D%5E%7Btruth%7D_%7Bpred%7D)。
+
+因此置信度可以定义为![[公式]](https://www.zhihu.com/equation?tex=Pr%28object%29%2A%5Ctext%7BIOU%7D%5E%7Btruth%7D_%7Bpred%7D)。
+
+**③20类对象分类的概率：** **不管一个单元格预测多少个边界框，该单元格只预测一组类别概率值（YOLOv1的一大缺点）。**
+
+### loss function
+
+<img src="https://pic1.zhimg.com/80/v2-aad10d0978fe7bc62704a767eabd0b54_1440w.jpg" alt="img" style="zoom: 50%;" />
+
+- 坐标预测部分w和h开根号是为了避免对于小尺度对象，w和h的微弱变化引起IOU的巨大变化。
+
+![image-20210803211952096](note.assets/image-20210803211952096.png)
+
+- 为了使得三种误差达到平衡，就需要给不同的误差赋予不同的权重。
+
+### 缺点
+
+- **因为YOLOv1中每个cell只预测两个bbox和一个类别，这就限制了能预测重叠或邻近物体的数量，比如说两个物体的中心点都落在这个cell中，但是这个cell只能预测一个类别。**
+- 不像Faster R-CNN一样预测offset，YOLO是直接预测bbox的位置的，这就增加了训练的难度。
+- YOLO是根据训练数据来预测bbox的，但是当测试数据中的物体出现了训练数据中的物体没有的长宽比时，YOLO的泛化能力低
+- 同时经过多次下采样，使得最终得到的feature的分辨率比较低，就是得到coarse feature，这可能会影响到物体的定位。
+- 损失函数的设计存在缺陷，使得物体的定位误差有偏大，尤其在不同尺寸大小的物体的处理上。
+
+## yolov2
+
+文章提出了一种新的**训练方法–联合训练算法** ，基本思路就是：同时在检测数据集和分类数据集上训练物体检测器（Object Detectors ），**用检测数据集的数据学习物体的准确位置，用分类数据集的数据来增加分类的类别量、提升健壮性。**
+
+### Better
+
+We focus mainly on improving recall and localization while maintaining classifification accuracy.
+
+我们主要关注于提高召回率和定位率，同时保持分类的准确性。
+
+#### Batch Normalization
+
+mAP提升2.4%。批归一化有助于解决反向传播过程中的梯度消失和梯度爆炸问题，降低对一些超参数（比如学习率、网络参数的大小范围、激活函数的选择）的敏感性，并且每个batch分别进行归一化的时候，起到了一定的正则化效果（YOLO2不再使用dropout），从而能够获得更好的收敛速度和收敛效果。**（具体看之前cs231n的笔记）**
+
+#### High resolution classifier（高分辨率图像分类器）
+
+mAP提升了3.7%。使用分辨率更高的图像进行训练。**YOLO2在采用 224\*224 图像进行分类模型预训练后，再采用 448\*448 的高分辨率样本对分类模型进行微调（10个epoch）**，使网络特征逐渐适应 448*448 的分辨率。然后再使用 448*448 的检测样本进行训练，
+
+#### Convolution with anchor boxes（使用先验框）
+
+- 召回率大幅提升到88%，同时mAP轻微下降了0.2左右。
+
+- 采用了相对anchor的offset的预测。
+- YOLOv1只预测每张图像98个bbox，YOLOv2如果每个grid采用9个anchor box，总共有13×13×9=1521个anchor box。
+- 作者去掉了网络中一个Pooling层，这让卷积层的输出能有更高的分辨率。收缩网络让其运行在416×416而不是448×448。
+
+- YOLOV2模型预测了一千多个框，由于存在很多无用的框，这就导致了mAP值的下降。但是由于预测的框多了，所以能够预测出来的属于ground truth的框就多了，所以召回率就增加了。
+
+#### Dimension clusters（聚类提取先验框的尺度信息）
+
+之前设定的anchor的尺寸都是手动设定的，网络可以学习适当地调整boxes，但如果我们为网络选择更合适的anchor的size，我们可以使网络更容易地学习预测良好的检测结果。
+
+本文经过对VOC数据集和COCO数据集中bbox的**k-means聚类分析**，将anchor机制中原本惯用的 9 anchor 法则 删减为仅保留最常出现的 5 anchor 。**其中，狭长型的anchor是被保留的主体**： 
+
+<img src="note.assets/image-20210803215746916.png" alt="image-20210803215746916" style="zoom: 67%;" />
+
+但是k-means使用的不是欧拉距离，而是设定了一种距离： What we really want are priors that lead to good IOU scores,which is independent of the size of the box. 
+
+<img src="note.assets/image-20210803220239677.png" alt="image-20210803220239677" style="zoom: 40%;" />
+
+centroid是聚类时被选作中心的边框，box就是其它边框，d就是两者间的“距离”。IOU越大，“距离”越近。
+
+We choose *k* = 5 as a good tradeoff between model complexity and high recall. 
+
+#### Direct location prediction (直接位置预测) 
+
+其位置预测公式为： ![[公式]](https://www.zhihu.com/equation?tex=%5C%5C+x%3D%28t_x%E2%88%97w_a%29%2Bx_a+%5C%5C+y%3D%28t_y%E2%88%97h_a%29%2By_a+)
+
+其中， ![[公式]](https://www.zhihu.com/equation?tex=x%2Cy) 是预测边框的中心， ![[公式]](https://www.zhihu.com/equation?tex=x_a%2Cy_a) 是先验框（anchor）的中心点坐标， ![[公式]](https://www.zhihu.com/equation?tex=w_a%2Ch_a) 是先验框（anchor）的宽和高， ![[公式]](https://www.zhihu.com/equation?tex=t_x%2Ct_y) 是要学习的参数。anchor中心点的初始坐标一般选对应的grid的左上角。
+
+<img src="note.assets/image-20210803221343298.png" alt="image-20210803221343298" style="zoom:33%;" /><img src="note.assets/image-20210803220810251.png" alt="image-20210803220810251" style="zoom:50%;" />
+
+由于 ![[公式]](https://www.zhihu.com/equation?tex=t_x%2Ct_y) 的取值没有任何约束，因此预测边框的中心可能出现在任何位置，训练早期阶段不容易稳定。YOLOv2调整了预测公式，**将预测边框的中心约束在特定gird网格内**。 ![[公式]](https://www.zhihu.com/equation?tex=%5C%5C+b_x%3D%CF%83%28t_x%29%2Bc_x++%5C%5C+b_y%3D%CF%83%28t_y%29%2Bc_y++%5C%5C+b_w%3Dp_we%5E%7Bt_w%7D++%5C%5C+b_h%3Dp_he%5E%7Bt_h%7D++%5C%5C+Pr%28object%29%E2%88%97IOU%28b%2Cobject%29%3D%CF%83%28t_o%29+)
+
+其中， ![[公式]](https://www.zhihu.com/equation?tex=b_x%2Cb_y%2Cb_w%2Cb_h) 是预测边框的中心和宽高。 ![[公式]](https://www.zhihu.com/equation?tex=Pr%28object%29%E2%88%97IOU%28b%2Cobject%29) 是预测边框的置信度confidence，YOLOv1是直接预测confidence的值，这里对预测参数 ![[公式]](https://www.zhihu.com/equation?tex=t_o) 进行σ变换后作为置信度的值。 ![[公式]](https://www.zhihu.com/equation?tex=c_x%2Cc_y) **是当前网格左上角到图像左上角的距离**，要先将网格大小归一化，即令一个网格的宽=1，高=1。 ![[公式]](https://www.zhihu.com/equation?tex=p_w%2Cp_h) 是先验框的宽和高。 σ是sigmoid函数。 ![[公式]](https://www.zhihu.com/equation?tex=t_x%2Ct_y%2Ct_w%2Ct_h%2Ct_o) 是要学习的参数，分别用于预测边框的中心和宽高，以及置信度。
+
+
+
