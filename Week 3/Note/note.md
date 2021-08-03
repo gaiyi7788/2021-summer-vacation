@@ -557,7 +557,9 @@ AP 是计算某一类 P-R 曲线下的面积，mAP 则是计算所有类别 P-R 
 
 作者提出的多尺度的object detection算法：**FPN（feature pyramid networks）**。原来多数的object detection算法都是**只采用顶层特征**做预测，但我们知道**低层的特征语义信息比较少，但是目标位置准确；高层的特征语义信息比较丰富，但是目标位置比较粗略。**另外虽然也有些算法采用多尺度特征融合的方式，但是一般是采用融合后的特征做预测，而本文不一样的地方在于预测是在不同特征层独立进行的。
 
-![img](https://upload-images.jianshu.io/upload_images/14932861-fd2353df6dd7aa45.jpg?imageMogr2/auto-orient/strip|imageView2/2/format/webp)
+![image-20210731121950497](note.assets/image-20210731121950497.png)
+
+<img src="note.assets/test.jpg" alt="img" style="zoom:80%;" />
 
 - conv1的图像还是层次太浅，特征信息太少，因此从p2开始构建FP
 - P6是由P5 Max-pooling得到的。
