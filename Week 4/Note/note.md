@@ -206,6 +206,8 @@ SSD中共有**不同大小，不同位置**的anchor**8732个**
 - 同时经过多次下采样，使得最终得到的feature的分辨率比较低，就是得到coarse feature，这可能会影响到物体的定位。
 - 损失函数的设计存在缺陷，使得物体的定位误差有偏大，尤其在不同尺寸大小的物体的处理上。
 
+# 2021.8.4
+
 ## yolov2
 
 文章提出了一种新的**训练方法–联合训练算法** ，基本思路就是：同时在检测数据集和分类数据集上训练物体检测器（Object Detectors ），**用检测数据集的数据学习物体的准确位置，用分类数据集的数据来增加分类的类别量、提升健壮性。**
@@ -258,7 +260,7 @@ We choose *k* = 5 as a good tradeoff between model complexity and high recall.
 
 其中， ![[公式]](https://www.zhihu.com/equation?tex=x%2Cy) 是预测边框的中心， ![[公式]](https://www.zhihu.com/equation?tex=x_a%2Cy_a) 是先验框（anchor）的中心点坐标， ![[公式]](https://www.zhihu.com/equation?tex=w_a%2Ch_a) 是先验框（anchor）的宽和高， ![[公式]](https://www.zhihu.com/equation?tex=t_x%2Ct_y) 是要学习的参数。anchor中心点的初始坐标一般选对应的grid的左上角。
 
-<img src="note.assets/image-20210803221343298.png" alt="image-20210803221343298" style="zoom:33%;" /><img src="note.assets/image-20210803220810251.png" alt="image-20210803220810251" style="zoom:50%;" />
+<img src="note.assets/image-20210803221343298.png" alt="image-20210803221343298" style="zoom:33%;" /><img src="note.assets/image-20210805132244049.png" alt="image-20210805132244049" style="zoom:50%;" />
 
 由于 ![[公式]](https://www.zhihu.com/equation?tex=t_x%2Ct_y) 的取值没有任何约束，因此预测边框的中心可能出现在任何位置，训练早期阶段不容易稳定。YOLOv2调整了预测公式，**将预测边框的中心约束在特定gird网格内**。因为每个grid负责预测单独的bbox，所有必须将预测的bbox限制在这个grid之中。对比faster-rcnn是对整张图进行bbox的预测回归，因此无需对offset进行限制，而yolo是划分了grid的。
 
@@ -305,3 +307,116 @@ Darknet-19有19个convolutional和5个maxpooling层，采用全局平均池化�
 作者通过ImageNet训练分类、COCO和VOC数据集来训练检测，这是一个很有价值的思路，可以让我们达到比较优的效果。 通过将两个数据集混合训练，**如果遇到来自分类集的图片则只计算分类的Loss，遇到来自检测集的图片则计算完整的Loss。**
 
 分层树：
+
+
+
+# 2021.8.5
+
+## yolov3
+
+<img src="note.assets/image-20210805112206009.png" alt="image-20210805112206009"  />
+
+1. `DBL`:代码中的`Darknetconv2d_BN_Leaky`，是yolo_v3的基本组件。就是卷积+BN+Leaky relu，其实就是yolov2中的convolutional组件。
+2. `resn`：n代表数字，有res1，res2, … ,res8等等，表示这个`res_block`里含有多少个res_unit。
+3. `concat`：张量拼接。将darknet中间层和后面的某一层的上采样进行拼接。拼接的操作和残差层add的操作是不一样的，拼接会扩充张量的维度，而add只是直接相加不会导致张量维度的改变
+
+### backbone
+
+- 整个v3结构里面，是**没有池化层和全连接层**的。前向传播过程中，**张量的尺寸变换是通过改变卷积核的步长来实现的**。
+
+- yolo_v3也和v2一样，backbone都会将输出特征图缩小到输入的1/32。所以，通常都要求输入图片是32的倍数。（常见416）
+
+### Output
+
+- yolov3输出了3个不同尺度的feature map，这个借鉴了FPN(feature pyramid networks)，采用多尺度来对不同size的目标进行检测，越精细的grid cell就可以检测出越精细的物体。
+- 但是与FPN不同的是，yolov3的融合是通过concat实现的，FPN则是通过add实现的。
+- yolov3一共9种anchor，3张feature map上各自对应3种anchor：
+  - **32倍降采样的感受野最大（13x13），适合检测大的目标**，anchor boxes为(116 ,90),(156 ,198)，(373 ,326)。
+  - **16倍（26x26）适合一般大小的物体**，anchor boxes为(30,61)， (62,45)，(59,119)。
+  - **8倍的感受野最小（52x52），适合检测小目标**，因此anchor boxes为(10,13)，(16,30)，(33,23)。
+
+### bbox regression
+
+- yolov2是**直接预测相对位置**。预测出b-box中心点相对于网格单元左上角的相对坐标。
+- yolov3目测好像和v2的方法没有什么区别？除了anchor的数目不同
+- ![image-20210805130313618](note.assets/image-20210805130313618.png)
+
+### 正负样本选取
+
+- 一张图片中有几个GT目标，就有几个正样本；
+- 选择和GT的IOU最大的anchor作为正样本；
+- 如果与GT的IOU超过某个阈值（论文中取0.5）但不是最大IOU的anchor，直接舍弃；
+- 其余anchor直接划为负样本
+
+### loss function
+
+![image-20210805132927438](note.assets/image-20210805132927438.png)
+
+![image-20210805132956259](note.assets/image-20210805132956259.png)
+
+![image-20210805133028900](note.assets/image-20210805133028900.png)
+
+![image-20210805133117703](note.assets/image-20210805133117703.png)
+
+> 即：将predict box中心相对grid的左上角的offset与GT相对左上角的offset作差，进行sum of squared error loss 
+
+## Network in Network（NIN）
+
+### MLP Convolution Layers
+
+![image-20210805114856040](note.assets/image-20210805114856040.png)
+
+- 对于传统CNN：![[公式]](https://www.zhihu.com/equation?tex=f%3Dmax%28w%5E%7BT%7Dx%2C0%29)
+
+  CNN由卷积层与池化层交替组成，如果所要提取的特征是线性的或者低度非线性的，这种卷积操作得到的特征是比较符合预期的；但是如果所要提取的特征是高度非线性的，用CNN中的Filter方法想要获取到符合我们预期的特征就比较困难了。
+
+- 作者提出采用MLP作为micro network，可以看成是在传统CNN卷积层中再包含一个微型的多层网络。
+
+<img src="note.assets/image-20210805115116607.png" alt="image-20210805115116607" style="zoom: 80%;" />
+
+- micro network的实现是通过1×1卷积操作得到的（在之前cs231n的笔记中有提到本文）
+- 多个**1x1的卷积核**级联就可以实现对多通道的feature map做非线性的组合，再配合激活函数，就可以实现MLP结构，同时通过1x1的卷积核操作还可以实现卷积核通道数的降维和升维，实现参数的减小化。
+
+```python
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.classifier = nn.Sequential(
+                nn.Conv2d(3, 192, kernel_size=5, stride=1, padding=2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(192, 160, kernel_size=1, stride=1, padding=0), #这里的1×1卷积操作就是micro network
+                nn.ReLU(inplace=True),
+                nn.Conv2d(160,  96, kernel_size=1, stride=1, padding=0),
+                nn.ReLU(inplace=True),
+                nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+                nn.Dropout(0.5),
+
+                nn.Conv2d(96, 192, kernel_size=5, stride=1, padding=2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(192, 192, kernel_size=1, stride=1, padding=0),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(192, 192, kernel_size=1, stride=1, padding=0),
+                nn.ReLU(inplace=True),
+                nn.AvgPool2d(kernel_size=3, stride=2, padding=1),
+                nn.Dropout(0.5),
+
+                nn.Conv2d(192, 192, kernel_size=3, stride=1, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(192, 192, kernel_size=1, stride=1, padding=0),
+                nn.ReLU(inplace=True),
+            	#10分类任务，直接conv2d输出通道设为10，再进行全局的avgpooling
+                nn.Conv2d(192,  10, kernel_size=1, stride=1, padding=0), 
+                nn.ReLU(inplace=True),
+                nn.AvgPool2d(kernel_size=8, stride=1, padding=0),
+                )
+```
+
+### Global Average Pooling
+
+![2540794-b4259c2d80371154](note.assets/2540794-b4259c2d80371154.png)
+
+利用全局均值池化来替代原来的全连接层（fully connected layers），即对每个特征图一整张图片进行全局均值池化，则每张特征图得到一个输出。例如CIFAR-100分类任务，直接将最后一层MLPconv输出通道设为100，对每个feature map（共100个）进行平局池化得到100维的输出向量，对应100种图像分类。这样采用均值池化，去除了构建全连接层的大量参数，大大减小网络规模，**有效避免过拟合。**
+
+## Dilated/Atrous Convolution（空洞卷积）
+
+https://zhuanlan.zhihu.com/p/50369448

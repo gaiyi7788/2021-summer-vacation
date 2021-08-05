@@ -378,6 +378,7 @@ x = dr(x) #一般在全连接层加dropout
 ### torch.nn.CrossEntropyLoss(...)
 
 - 在训练之前需要定义损失函数，这里是一个多分类问题，常用到交叉熵损失函数`nn.CrossEntropyLoss`。
+- **注意一个很重要的问题，在搭建网络model的时候最后的结果并没有接softmax，需要在loss function这里进行。**
 - 该损失函数结合了`nn.LogSoftmax()`和`nn.NLLLoss()`两个函数:
 - `nn.LogSoftmax()`是直接给softmax取对数
 
