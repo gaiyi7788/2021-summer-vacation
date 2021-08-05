@@ -360,6 +360,91 @@ Darknet-19有19个convolutional和5个maxpooling层，采用全局平均池化�
 
 > 即：将predict box中心相对grid的左上角的offset与GT相对左上角的offset作差，进行sum of squared error loss 
 
+## yolov3 SPP
+
+![YOLOv3-spp网络结构](note.assets/20200215143519584.png)
+
+### SPP moudle
+
+在Darknet输出之后，第一个feature map输出之前，增加了一个SPP结构。
+
+<img src="note.assets/image-20210805190922015.png" alt="image-20210805190922015" style="zoom: 80%;" />
+
+- SPP module由四个并行的分支构成，分别是kernel size为 5×5, 9×9, 13×13的max pooling和一个跳跃连接，最后今次那个concat。
+
+- 通过spp模块实现局部特征和全局特征（所以空间金字塔池化结构的最大的池化核要尽可能的接近等于需要池化的featherMap的大小）的featherMap级别的融合，丰富最终特征图的表达能力，从而提高MAP。
+- 另外，有YOLOv3-SPP1(仅在第一个检测头前集成SPP模块)和YOLOv3-SPP3(在三个检测头前都加入了SPP模块)
+
+### 数据增强Mosaic
+
+输入端采用了 Mosaic 数据增强，具体为采用了 4 张图片，用随机缩放、随机裁剪、随机排布的方式进行拼接。
+
+> 1. 丰富数据集：随机使用 4 张图片，随机缩放，再随机分布进行拼接，大大丰富了
+>    检测数据集，特别是随机缩放增加了很多小目标，让网络的鲁棒性更好。
+> 2. 使得BN层能一次统计多张图片的参数。
+> 3. 减少 GPU：作者考虑到很多人可能只有一个 GPU，因此 Mosaic 增强训练时，可以直接计算 4 张图片的数据，
+>    使得 Mini-batch 大小并不需要很大，一个 GPU 就可以达到比较好的效果。
+
+### 关于IOU loss
+
+#### 为什么不能用yolov3中的L2损失
+
+- L2损失不能很好的反应predict和GT的重合程度。
+- <img src="note.assets/image-20210805224813536.png" alt="image-20210805224813536" style="zoom:80%;" />
+- 这三种情况的L2损失相同，但明显第三种的predict和GT匹配的最好
+
+#### IOU loss
+
+![image-20210805225509646](note.assets/image-20210805225509646.png)
+
+但是更常见的计算IOU loss的公式是：
+$$
+IOU\hspace{1mm} loss = 1-IOU
+$$
+
+- IOU loss 能更好的反应重合程度，具有尺度不变性。
+
+- 但是有两个致命缺点：
+
+  - 当预测框和目标框不相交时，IoU(A,B)=0时，不能反映A,B距离的远近（即无论AB离多远，得到的loss都相等），此时损失函数不可导，IoU Loss 无法优化两个框不相交的情况。
+  - 假设预测框和目标框的大小都确定，只要两个框的相交值是确定的，其IoU值是相同时，IoU值不能反映两个框是如何相交的。
+
+  ![img](https://pic1.zhimg.com/80/v2-7b18ab41f18fd58d8d63f176251d8720_720w.jpg)
+
+#### GIOU loss
+
+![image-20210805232118339](note.assets/image-20210805232118339.png)
+
+- $A^c$对应蓝框，即包住predict和GT的最小矩形框，u是两个的交集
+
+- 当两框完全重合时，IOU=1，$A^c=u$，故GIOU=1
+
+- 当两框相距无穷远时，IOU=0，$\lim_{l->\infin}\frac{A^c-u}{A^c}=1$，则GIOU=-1
+
+- $$
+  GIOU\hspace{1mm} loss = 1-GIOU
+  $$
+
+- 但是当两个框的w和h相等，写水平或垂直平行时，GIOU退化成IOU
+
+<img src="note.assets/image-20210805232908390.png" alt="image-20210805232908390" style="zoom:50%;" />
+
+- IOU和GIOU收敛很慢，且回归的精度不够
+
+#### DIOU loss(distance-IOU) 
+
+<img src="note.assets/image-20210805234324945.png" alt="image-20210805234324945" style="zoom:80%;" />
+
+- d对应GT和predict的中心的欧氏距离
+- c是虚线框的对角线长度
+
+#### CIOU loss(Complete-IOU)
+
+<img src="note.assets/image-20210805235335902.png" alt="image-20210805235335902" style="zoom: 67%;" />
+
+- 一个优秀的regression loss应该考虑3种几何参数：重叠面积、中心点距离、长宽比
+- $\alpha \upsilon $衡量的是长宽比，即predict和GT的长宽比应该越接近越好，这样形状更加匹配
+
 ## Network in Network（NIN）
 
 ### MLP Convolution Layers
@@ -417,6 +502,16 @@ class Net(nn.Module):
 
 利用全局均值池化来替代原来的全连接层（fully connected layers），即对每个特征图一整张图片进行全局均值池化，则每张特征图得到一个输出。例如CIFAR-100分类任务，直接将最后一层MLPconv输出通道设为100，对每个feature map（共100个）进行平局池化得到100维的输出向量，对应100种图像分类。这样采用均值池化，去除了构建全连接层的大量参数，大大减小网络规模，**有效避免过拟合。**
 
+# 2021.8.6 
+
 ## Dilated/Atrous Convolution（空洞卷积）
 
 https://zhuanlan.zhihu.com/p/50369448
+
+
+
+
+
+
+
+## Focal Loss
