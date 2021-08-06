@@ -524,7 +524,7 @@ https://zhuanlan.zhihu.com/p/50369448
 
 <img src="note.assets/image-20210806180939819.png" alt="image-20210806180939819" style="zoom:67%;" />
 
-<img src="note.assets/image-20210806181042864.png" alt="image-20210806181042864" style="zoom:67%;" />
+<img src="https://pic4.zhimg.com/v2-b6b6cc9a6375df5536e3a506dc9c910b_r.jpg" alt="preview" style="zoom: 67%;" />
 
 - 增加的$(1-p_y)^{\gamma}$可以有效降低易分样本的损失贡献。
 - 最终形式：

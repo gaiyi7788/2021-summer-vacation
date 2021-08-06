@@ -13,18 +13,22 @@ from train_utils import train_eval_utils as train_util
 from train_utils import get_coco_api_from_dataset
 
 
-def train(hyp):
+def train(opt):
     device = torch.device(opt.device if torch.cuda.is_available() else "cpu")
     print("Using {} device training.".format(device.type))
 
-    wdir = "weights" + os.sep  # weights dir
+    wdir = "weights" + os.sep  # weights dir # "weights"+"/"
     best = wdir + "best.pt"
     results_file = "results{}.txt".format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+    
+    with open(opt.hyp) as f: # 存放超参数
+        hyp = yaml.load(f, Loader=yaml.FullLoader)
 
     cfg = opt.cfg
     data = opt.data
     epochs = opt.epochs
     batch_size = opt.batch_size
+    # 这个accumulate不太清楚是做什么用的
     accumulate = max(round(64 / batch_size), 1)  # accumulate n times before optimizer update (bs 64)
     weights = opt.weights  # initial training weights
     imgsz_train = opt.img_size
@@ -35,13 +39,13 @@ def train(hyp):
     # 图像要设置成32的倍数
     gs = 32  # (pixels) grid size
     assert math.fmod(imgsz_test, gs) == 0, "--img-size %g must be a %g-multiple" % (imgsz_test, gs)
-    grid_min, grid_max = imgsz_test // gs, imgsz_test // gs
+    grid_min, grid_max = imgsz_test // gs, imgsz_test // gs # 应该是对应最后一层的特征图的尺寸，对于416的输入，输出13*13
     if multi_scale:
         imgsz_min = opt.img_size // 1.5
         imgsz_max = opt.img_size // 0.667
 
         # 将给定的最大，最小输入尺寸向下调整到32的整数倍
-        grid_min, grid_max = imgsz_min // gs, imgsz_max // gs
+        grid_min, grid_max = imgsz_min // gs, imgsz_max // gs #调整多尺度输入
         imgsz_min, imgsz_max = int(grid_min * gs), int(grid_max * gs)
         imgsz_train = imgsz_max  # initialize with max size
         print("Using multi_scale training, image range[{}, {}]".format(imgsz_min, imgsz_max))
@@ -257,7 +261,7 @@ def train(hyp):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--batch-size', type=int, default=2)
+    parser.add_argument('--batch-size', type=int, default=4)
     parser.add_argument('--cfg', type=str, default='cfg/yolov3-spp.cfg', help="*.cfg path")
     parser.add_argument('--data', type=str, default='data/my_data.data', help='*.data path')
     parser.add_argument('--hyp', type=str, default='cfg/hyp.yaml', help='hyperparameters path')
@@ -281,10 +285,6 @@ if __name__ == '__main__':
     opt.data = check_file(opt.data)
     opt.hyp = check_file(opt.hyp)
     print(opt)
-
-    with open(opt.hyp) as f:
-        hyp = yaml.load(f, Loader=yaml.FullLoader)
-
     print('Start Tensorboard with "tensorboard --logdir=runs", view at http://localhost:6006/')
     tb_writer = SummaryWriter(comment=opt.name)
-    train(hyp)
+    train(opt)
