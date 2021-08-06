@@ -476,7 +476,7 @@ torch.squeeze(input, dim=None, out=None)
 
 精度和错误率虽然常用，但还是不能满足所有的需求。举个例子：
 
-信息检索中，我们经常会关系“检索出的信息有多少比例是用户感兴趣的”以及“用户感兴趣的信息中有多少被检索出来了”，用精度和错误率就描述出来了，这就需要引入准确率（precision，亦称查准）和召回率（recall，亦称查全）。
+信息检索中，我们经常会关系“检索出的信息有多少比例是用户感兴趣的”以及“用户感兴趣的信息中有多少被检索出来了”，用精度和错误率就描述出来了，这就需要引入**准确率（precision，亦称查准）和召回率（recall，亦称查全）**。
 
 ​													表1 测试样本分类说明（分4类）
 
@@ -486,7 +486,7 @@ torch.squeeze(input, dim=None, out=None)
 |     反     |       FP（假正）       | TN（真反） |                         |
 | **准确率** | $P = \frac{TP}{TP+FP}$ |            |                         |
 
-**准确率：**预测结果中，究竟有多少是真的正？（找出来的对的比例）
+**准确率：**预测的所有为正的结果中、中，究竟有多少是真的正？（找出来的对的比例）
 
 **召回率：**所有正样本中，究竟预测对了多少？（找回来了几个）
 
@@ -510,7 +510,7 @@ torch.squeeze(input, dim=None, out=None)
 
 AP 是计算某一类 P-R 曲线下的面积，mAP 则是计算所有类别 P-R 曲线下面积的平均值。
 
-假设我们有 7 张图片（Images1-Image7），这些图片有 15 个目标（绿色的框，GT 的数量，上文提及的 `all ground truths`）以及 24 个预测边框（红色的框，A-Y 编号表示，并且有一个置信度值），这15个目标属于同一类别。
+假设我们有 7 张图片（Images1-Image7），这些图片有 15 个目标（绿色的框，GT 的数量，上文提及的 `all ground truths`）以及 24 个预测边框（红色的框，A-Y 编号表示，并且有一个置信度值），**这15个目标属于同一类别**。
 
 ![img](note.assets/v2-793336302ec813c5498cdea348255191_720w.jpg)
 
@@ -520,16 +520,16 @@ AP 是计算某一类 P-R 曲线下的面积，mAP 则是计算所有类别 P-R 
 
 ![img](note.assets/v2-af3db57f93bd7e5c0786273bdaa78251_720w.jpg)
 
-通过上表，我们可以绘制出 P-R 曲线（因为 AP 就是 P-R 曲线下面的面积），但是在此之前我们需要计算出 P-R 曲线上各个点的坐标，根据置信度从大到小排序所有的预测框，然后就可以计算 Precision 和 Recall 的值，见下表。（需要记住一个叫**累加的概念，就是下图的 ACC TP 和 ACC FP**）
+通过上表，我们可以绘制出 P-R 曲线（因为 AP 就是 P-R 曲线下面的面积），但是在此之前我们需要计算出 P-R 曲线上各个点的坐标，根据置信度从大到小排序所有的预测框，依次取预测框放到一类中，计算在该类中的 Precision 和 Recall 的值，见下表。（需要记住一个叫**累加的概念，就是下图的 ACC TP 和 ACC FP**）
 
 <img src="note.assets/v2-855b1e83d69700445924bcb81f0e0c91_720w.jpg" alt="img"  />
 
-- 标号为 1 的 Precision 和 Recall 的计算方式：Precision=TP/(TP+FP)=1/(1+0)=1，Recall=TP/(TP+FN)=TP/(`all ground truths`)=1/15=0.0666 （`all ground truths 上面有定义过了`）
-- 标号 2：Precision=TP/(TP+FP)=1/(1+1)=0.5，Recall=TP/(TP+FN)=TP/(`all ground truths`)=1/15=0.0666
--  标号 3：Precision=TP/(TP+FP)=2/(2+1)=0.6666，Recall=TP/(TP+FN)=TP/(`all ground truths`)=2/15=0.1333
+- 标号为 1 的 Precision 和 Recall 的计算方式：R是TP，现在只有R一个样本，所以Precision=TP/(TP+FP)=1/(1+0)=1，Recall=TP/(TP+FN)=TP/(`all ground truths`)=1/15=0.0666 （`all ground truths 上面有定义过了`）
+- 标号 2：Y是FP，现在有R和Y两个样本，Precision=TP/(TP+FP)=1/(1+1)=0.5，Recall=TP/(TP+FN)=TP/(`all ground truths`)=1/15=0.0666
+-  标号 3：J是TP，现在有RYJ三个样本，两个TP，一个FP，Precision=TP/(TP+FP)=2/(2+1)=0.6666，Recall=TP/(TP+FN)=TP/(`all ground truths`)=2/15=0.1333
 -  其他的依次类推
 
-然后就可以绘制出 P-R 曲线 
+然后就可以绘制出 P-R 曲线 **（但是其他很多地方PR曲线都是根据阈值的不同划分的TP和FP，有待考证）**
 
 ![img](note.assets/v2-fd0bd7bcfefd47a1450593cfcde4b2d8_720w.jpg)
 

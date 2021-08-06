@@ -508,10 +508,26 @@ class Net(nn.Module):
 
 https://zhuanlan.zhihu.com/p/50369448
 
+![img](https://upload-images.jianshu.io/upload_images/2540794-f09a0e460fd07468.png?imageMogr2/auto-orient/strip|imageView2/2/w/395/format/webp)               ![img](https://upload-images.jianshu.io/upload_images/2540794-f4b4be2a9128729a.png?imageMogr2/auto-orient/strip|imageView2/2/w/395/format/webp)
 
+> Standard Convolution with a 3 x 3 kernel (and padding)    &     Dilated Convolution with a 3 x 3 kernel and **dilation rate 2**
 
-
-
-
+- 空洞卷积是是在标准的 convolution map 里注入空洞，以此来增加 reception field。相比原来的正常convolution，dilated convolution 多了一个 hyper-parameter 称之为 dilation rate 指的是kernel的间隔数量 (正常的 convolution 是 dilatation rate 1)。
+- **扩大感受野**：在deep net中为了增加感受野且降低计算量，总要进行降采样(pooling或s2/conv)，这样虽然可以增加感受野，但空间分辨率降低了。为了能不丢失分辨率，且仍然扩大感受野，可以使用空洞卷积。这在检测，分割任务中十分有用。一方面感受野大了可以检测分割大目标，另一方面分辨率高了可以精确定位目标。
+- **捕获多尺度上下文信息：**空洞卷积有一个参数可以设置dilation rate，具体含义就是在卷积核中填充dilation rate-1个0，因此，当设置不同dilation rate时，感受野就会不一样，也即获取了多尺度信息。
+- 存在gridding问题：因为空洞卷积得到的某一层的结果中，邻近的像素是从相互独立的子集中卷积得到的，相互之间缺少依赖，造成**局部信息丢失**，同时**远距离获取的信息没有相关性**
 
 ## Focal Loss
+
+- 为了解决one stage网络样本不均衡的问题。（two stage 其实也有问题，但是在样本筛选阶段经过调整已经比one stage的不平衡情况好很多了，比如faster-rcnn的1:3）
+- we propose to reshape the loss function to **down-weight easy examples** and thus focus training on **hard negatives**.将重点放在比较难训练的负样本上。
+
+<img src="note.assets/image-20210806180939819.png" alt="image-20210806180939819" style="zoom:67%;" />
+
+<img src="note.assets/image-20210806181042864.png" alt="image-20210806181042864" style="zoom:67%;" />
+
+- 增加的$(1-p_y)^{\gamma}$可以有效降低易分样本的损失贡献。
+- 最终形式：
+
+<img src="note.assets/image-20210806182808223.png" alt="image-20210806182808223" style="zoom:67%;" />
+
