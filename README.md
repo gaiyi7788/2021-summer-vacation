@@ -13,3 +13,4 @@ Week 3，精读faster-rcnn的论文，阅读faster-rcnn的pytorch源码；7.27 �
 Week 4，学习各种经典的目标检测的框架，包括SSD，yolo系列，以及相关论文的阅读。阅读yolov3-SPP代码
 
 Week 5，开始看文本检测的综述，并刷 leetcode 锻炼编程能力。
+
