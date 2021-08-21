@@ -105,13 +105,13 @@ anchors = self.anchor_generator(images, features)
 
 ### NMS
 
-NMS用于剔除图像中检出的冗余bbox，标准NMS的具体做法为：
+NMS用于剔除图像中检出的冗余bbox（与**与GT的IOU最大的bbox**的IOU大于阈值的bbox），标准NMS的具体做法为：
 
 > **step-1**：将所有检出的output_bbox按cls score划分（如pascal voc分20个类，也即将output_bbox按照其对应的cls score划分为21个集合，1个bg类，只不过bg类就没必要做NMS而已）；
 >
 > **step-2**：在每个集合内根据各个bbox的cls score做降序排列，得到一个降序的list_k；
 >
-> **step-3**：从list_k中top1 cls score开始，计算该bbox_x与list中其他bbox_y的IoU，若IoU大于阈值T，则剔除该bbox_y，最终保留bbox_x，从list_k中取出；
+> **step-3**：从list_k中top1 cls score开始，计算该bbox_x与list中其他bbox_y的IoU，若IoU大于阈值T，则**剔除该bbox_y**，最终保留bbox_x，从list_k中取出；
 >
 > **step-4**：选择list_k中筛选完之后的top1 cls score，重复step-3中的迭代操作，直至list_k中所有bbox都完成筛选；
 >
@@ -120,11 +120,11 @@ NMS用于剔除图像中检出的冗余bbox，标准NMS的具体做法为：
 ### 生成proposals
 
 ```python
-        # 将预测的bbox regression参数应用到anchors上得到最终预测bbox坐标
-       	proposals = self.box_coder.decode(pred_bbox_deltas.detach(), anchors)
-        proposals = proposals.view(num_images, -1, 4)
-        # 筛除小boxes框，nms处理，根据预测概率获取前post_nms_top_n个目标
-        boxes, scores = self.filter_proposals(proposals, objectness, images.image_sizes, num_anchors_per_level)
+# 将预测的bbox regression参数应用到anchors上得到最终预测bbox坐标
+proposals = self.box_coder.decode(pred_bbox_deltas.detach(), anchors)
+proposals = proposals.view(num_images, -1, 4)
+# 筛除小boxes框，nms处理，根据预测概率获取前post_nms_top_n个目标
+boxes, scores = self.filter_proposals(proposals, objectness, images.image_sizes, num_anchors_per_level)
 ```
 
 <img src="faster-rcnn最终总结.assets/image-20210726193525619.png" alt="image-20210726193525619" style="zoom:50%;" />
@@ -167,19 +167,18 @@ $w_a$和$h_a$是权重，一般取1
 ### RPN loss function
 
 ```python
-            # 计算每个anchors最匹配的gt，并将anchors进行分类，前景，背景以及废弃的anchors
-            # labels 前景1，背景0，舍弃-1，这里的标签仅是用来挑选出参与训练的样本
-            labels, matched_gt_boxes = self.assign_targets_to_anchors(anchors, targets) 
-            # 结合anchors以及对应的gt，计算regression参数
-            regression_targets = self.box_coder.encode(matched_gt_boxes, anchors)
-            loss_objectness, loss_rpn_box_reg = self.compute_loss(
-                objectness, pred_bbox_deltas, labels, regression_targets
-            )
-            losses = {
-                "loss_objectness": loss_objectness,
-                "loss_rpn_box_reg": loss_rpn_box_reg
-            }
-            
+# 计算每个anchors最匹配的gt，并将anchors进行分类，前景，背景以及废弃的anchors
+# labels 前景1，背景0，舍弃-1，这里的标签仅是用来挑选出参与训练的样本
+labels, matched_gt_boxes = self.assign_targets_to_anchors(anchors, targets) 
+# 结合anchors以及对应的gt，计算regression参数
+regression_targets = self.box_coder.encode(matched_gt_boxes, anchors)
+loss_objectness, loss_rpn_box_reg = self.compute_loss(
+    objectness, pred_bbox_deltas, labels, regression_targets
+)
+losses = {
+    "loss_objectness": loss_objectness,
+    "loss_rpn_box_reg": loss_rpn_box_reg
+}          
 ```
 
 <img src="faster-rcnn最终总结.assets/image-20210726213819019.png" alt="image-20210726213819019" style="zoom: 50%;" />
@@ -286,6 +285,8 @@ $$
 ## fast-rcnn loss function
 
 ![image-20210727184147277](faster-rcnn最终总结.assets/image-20210727184147277.png)
+
+第一个512是样本数，第二个512是通道数
 
 > 将rpn_loss_function和fast_rcnn_loss_function一共4项加和，得到总的loss function，进行联合训练。
 

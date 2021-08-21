@@ -192,6 +192,54 @@ LSTM主要包括三个不同的门结构：遗忘门、记忆门和输出门。
 
 在 $t$ 时刻输入信号 $x_t$ 以后，计算对应的输出信号。
 
+## BLSTM（双向LSTM）
+
+BLSTM是LSTM的另一种变型他的来源是因为，LSTM只能实现单向的传递。当我们语句是承前启后的情况时，自然能完成。但是当语句顺序倒过来，关键次在后面了，LSTM就无能为力了。因此有人提出了BLSTM双向网络。
+
+![img](note.assets/70.jpeg)
+
+## `torch.nn.LSTM(*args, **kwargs)`
+
+<img src="note.assets/image-20210821170439756.png" alt="image-20210821170439756" style="zoom:80%;" />
+
+参数列表
+
+- input_size：x的特征维度
+- hidden_size：隐藏层的特征维度
+- num_layers：lstm隐层的层数，默认为1
+- bias：False则bih=0和bhh=0. 默认为True
+- batch_first：True则输入输出的数据格式为 (batch, seq, feature)
+- dropout：除最后一层，每一层的输出都进行dropout，默认为: 0
+- bidirectional：True则为双向lstm，num_directions=2；默认为False，num_directions=1
+- 输入：`input, (h0, c0)`
+- 输出：`output, (hn,cn)`
+
+**输入数据格式：**
+
+- **input** (seq_len, batch_size, input_size)
+- **h_0** (num_layers * num_directions, batch_size, hidden_size)
+- **c_0** (num_layers * num_directions, batch_size, hidden_size)
+
+**输出数据格式：**
+
+- **output** (seq_len, batch_size, num_directions * hidden_size)
+- **h_n** (num_layers * num_directions, batch_size, hidden_size)
+- **c_n** (num_layers * num_directions, batch_size, hidden_size)
+
+Pytorch里的LSTM单元接受的输入都必须是3维的张量(Tensors).
+
+```python
+>>> rnn = nn.LSTM(10, 20, 2) # input_size=10, hidden_size=20, num_layers=2
+>>> input = torch.randn(5, 3, 10) # seq_len=5，batch_size=3,input_size=10
+>>> h0 = torch.randn(2, 3, 20) # num_layers * num_directions=2*1=2
+>>> c0 = torch.randn(2, 3, 20)
+>>> output, (hn, cn) = rnn(input, (h0, c0))
+```
+
+<img src="note.assets/v2-b45f69904d546edde41d9539e4c5548c_720w.jpg" alt="img" style="zoom:67%;" />
+
+对于应用于cv的输入`(N,C,H,W)`，一般取`W`作为时序方向，所以`seq_len=W, batch_size=N, input_size=H*C`
+
 ## Fluent python 第二章 序列构成的数组
 
 ### 推导式
@@ -330,4 +378,61 @@ USA/31195855
 ```
 
 \+ 和 * 都遵循这个规律，不修改原有的操作对象，而是构建一个全新的序列。
+
+# 2021.8.21
+
+## CTPN（Detecting Text in Natural Image with Connectionist Text Proposal Network）
+
+![image-20210821210012915](note.assets/image-20210821210012915.png)
+
+- 很难将通用目标检测系统（如faster-rcnn）直接应用于场景文本检测
+- 在通用目标检测中，每个目标都有一个明确的封闭边界，而在文本中可能不存在这样一个明确定义的边界，因为文本行或单词是由许多单独的字符或笔划组成的。
+- 对于目标检测，典型的正确检测是松散定义的，例如bbox和GT的IOU大于阈值
+- 综合阅读文本则是一个细粒度的识别任务，需要正确的检测，覆盖文本行或字的整个区域。文本检测通常需要更准确的定义，导致不同的评估标准，例如文本基准中常用的Wolf标准
+
+- 本文：
+  - **垂直锚点机制(vertical anchor mechanism)**：联合预测每个文本 Proposal 的垂直位置和文本/非文本分数，从而获得出色的定位精度。
+  - **网内循环架构(in-network recurrent architecture)**：用于按顺序连接这些细粒度的文本 Proposal，从而允许它们编码丰富的上下文信息。
+
+### Detecting Text in Fine-scale Proposals
+
+- CTPN本质上是一个全卷积网络，允许任意大小的输入图像。
+- 它通过在卷积特征映射中密集地滑动小窗口来检测文本行，并且输出一系列细粒度的text proposal。
+
+以VGG-16为例，取VGG-16经过conv5的输出feature map（一共经过4个maxpooling，因此total stride是16）。conv5特征映射的大小由输入图像的大小决定，而感受野固定为16个和228个像素。
+
+- 文本检测是在单词或文本行级别中定义的，因此通过将其定义为单个目标（例如检测单词的一部分）可能很容易进行错误的检测。因此，直接预测文本行或单词的位置可能很难或不可靠，
+
+![Figure 2](note.assets/Figure_2-16295477991524.png)
+
+左：RPN提议。右：细粒度的文本提议。
+
+- **文本行是一个序列，它是文本和通用目标之间的主要区别。**将文本行视为一系列细粒度的文本提议是很自然的，其中每个提议通常代表文本行的一小部分
+- 我们认为，通过**固定每个提议的水平位置**来**预测其垂直位置**会更准确，水平位置更难预测。与预测目标4个坐标的RPN相比，这减少了搜索空间。
+
+在Conv5的feature map的每个位置上取3 ∗ 3 ∗ C 的窗口的特征，这些特征将用于预测该位置k个anchor对应的类别信息，位置信息。
+
+> anchor定义：(卷积网络生成特征图之后，用这些特征图进行3 * 3的卷积，当3 * 3的卷积核滑动到特征图的某一个位置时，以当前滑动窗口中心为中心映射到原图的一个区域，以原图上的的这个区域为中心去画框，这个框就称为anchor。
+
+设计$k$个垂直锚点来预测每个提议的$y$坐标。$k$个锚点具有相同的水平位置，固定宽度为16个像素，但其垂直位置在$k$个不同的高度变化。在我们的实验中，我们对每个提议使用十个锚点，k=10，其高度在输入图像中从11个像素变化到273个像素（每次÷0.7）。明确的垂直坐标是通过提议边界框的高度和y轴中心来度量的。我们计算相对于锚点的边界框位置的相对预测的垂直坐标（v）
+
+<img src="note.assets/image-20210821202133175.png" alt="image-20210821202133175" style="zoom: 33%;" />
+
+其中，$v=(v_c, v_h)$和$v^∗ = (v_c^∗ , v_h^∗ )$ 分别是预测的坐标和ground truth 坐标。$c^a_y$和$h^a$是anchor box的y轴中心坐标和高度，从原图像中计算得来的。$c_y$和$h$是预测的y轴坐标，$c_y^*$ 和 $h^*$是ground truth 坐标。每个预测文本propoasl都有一个大小为$h×16$ 的边界框（在输入图像中）。一般来说，文本proposal在很大程度上要比它的有效感受野 228×228 要小。
+
+<img src="note.assets/image-20210821204543932.png" alt="image-20210821204543932" style="zoom: 33%;" />
+
+> 处理ground truth
+>
+> 一般数据库给的都是整个文本行或者单词级别的标注，因为我们选择的方式是用固定宽度的anchor进行回归，因此在数据预处理时需要将ground truth处理成一系列固定宽度的box
+>
+> <img src="note.assets/v2-bbe0a2ed858748fbf671817741d6a305_1440w.jpg" alt="img" style="zoom:25%;" /> 	<img src="note.assets/v2-2bc9794310ef39392649059d56a48cb8_1440w.jpg" alt="img" style="zoom: 60%;" />
+>
+> - GT处理前后对比
+
+**结论：**通过设计的垂直anchor和细粒度的检测策略，可以通过使用**单尺度图像处理各种尺度和长宽比的文本行**。
+
+### Recurrent Connectionist Text Proposals
+
+上一步将文本行分成一系列细粒度的文本proposal，因为文本具有序列特征，上下文信息很重要，所以应用 RNN(BLSTM) 编码上下文信息来进行文本识别。
 
