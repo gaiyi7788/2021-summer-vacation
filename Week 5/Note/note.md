@@ -236,9 +236,9 @@ Pytorch里的LSTM单元接受的输入都必须是3维的张量(Tensors).
 >>> output, (hn, cn) = rnn(input, (h0, c0))
 ```
 
-<img src="note.assets/v2-b45f69904d546edde41d9539e4c5548c_720w.jpg" alt="img" style="zoom:67%;" />
+<img src="note.assets/v2-9e99c9b75bc4a23f207d460934937c95_1440w.jpg" alt="img" style="zoom: 50%;" />
 
-对于应用于cv的输入`(N,C,H,W)`，一般取`W`作为时序方向，所以`seq_len=W, batch_size=N, input_size=H*C`
+对于应用于cv的输入`(N,C,H,W)`，一般取`W`作为时序方向，所以`seq_len=W, batch_size=N*H, input_size=C`
 
 ## Fluent python 第二章 序列构成的数组
 
@@ -435,4 +435,57 @@ USA/31195855
 ### Recurrent Connectionist Text Proposals
 
 上一步将文本行分成一系列细粒度的文本proposal，因为文本具有序列特征，上下文信息很重要，所以应用 RNN(BLSTM) 编码上下文信息来进行文本识别。
+
+- RNN类型：BLSTM，每个LSTM有128个隐藏层
+- RNN输入：每个 `3*3*C` 的卷积特征（可以拉成一列），同一行的窗口的特征形成一个序列
+- RNN输出：每个窗口对应256维特征
+
+> 对一张输入图片而言，BLSTM提取的只是文本水平方向的关联性，行与行之间相互独立，batch之间自然也相互独立，因此`N*H`可以当做输入BLSTM的`batch_size`；
+>
+> 将feature map的每一行作为一个时间序列输入BLSTM，BLSTM中时间序列`seq_len`对应W；
+>
+> 每个时间序列特征数对应feature map通道数C
+>
+> 因此[seq_len, batch_size, input_size]＝[W,N*H,C]。
+
+<img src="note.assets/image-20210822161631424.png" alt="image-20210822161631424" style="zoom:80%;" />
+
+在BLSTM的隐藏层中循环更新其内部状态：$H_t$
+$$
+H_{t}=\varphi(H_{t-1}, X_t),  \qquad t=1,2,…,W \tag{3}
+$$
+使用双向LSTM来进一步扩展RNN层，这使得它能够在两个方向上对递归上下文进行编码，以便连接感受野能够覆盖整个图像宽度。
+
+*$H_t$*中的内部状态被映射到后面的FC层，并且输出层用于计算第 t 个proposal的预测，大大减少了错误检测，同时还能够恢复很多包含非常弱的文本信息的遗漏文本proposal。
+
+### Side-refinement（边缘细化）
+
+**文本行的构建：**
+
+每两个相近的proposal组成一个pair，合并不同的pair直到无法再合并为止（没有公共元素）
+
+![image-20210822162207167](note.assets/image-20210822162207167.png)
+
+**边缘细化：**
+$$
+o=(x_{side}-c_x^a)/w^a, \quad o^*=(x^*_{side}-c_x^a)/w^a
+$$
+
+### 模型输出与损失函数
+
+**输出结果：**CTPN有三个输出共同连接到最后的FC层，包括了2K的得分(前景背景分别的得分)，2K回归(边框宽度和中心点y方向坐标)，1K的边界调整(调整位于边界的框的x值，使得框住的更好)
+$$
+L(\textbf{s}_i, \textbf{v}_j, \textbf{o}_k) =\frac1{N_{s}}\sum_iL^{cl}_{s}(\textbf{s}_i, \textbf{s}_i^*) +\frac{\lambda_1}{N_v}\sum_j L^{re}_v(\textbf{v}_j, \textbf{v}_j^*) +\frac{\lambda_2}{N_o}\sum_k L^{re}_o(\textbf{o}_k, \textbf{o}_k^*) \tag{5}
+$$
+引入了三种损失函数：$L^{cl}_s$，$L^{re}_v$和$L^{re}_o$，其分别计算文本/非文本分数，坐标和边缘细化。
+
+$L^{cl}_s$ 是softmax损失；$L^{re}_v$和$L^{re}_o$是回归损失，用smooth-L1。
+
+### 训练标签与训练数据
+
+**训练标签：**IOU>0.7或由最大IOU，正样本；IOU<0.5负样本
+
+**训练数据：**每个小批量数据的锚点数量固定为128，正负样本的比例为1：1。如果正样本小于64用负样本扩充。
+
+# 2021.8.22
 
