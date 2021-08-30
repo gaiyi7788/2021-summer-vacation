@@ -1,22 +1,17 @@
-!/Week1/Note/note.assert/*
-!/Week2/Note/note.assert/*
-!/Week3/Note/note.assert/*
-!/Week4/Note/note.assert/*
-!/Week5/Note/note.assert/*
 Repo-specific GitIgnore ----------------------------------------------------------------------------------------------
-*.jpg
-*.jpeg
-*.png
-*.bmp
-*.tif
-*.tiff
-*.heic
-*.JPG
-*.JPEG
-*.PNG
-*.BMP
-*.TIF
-*.TIFF
+#*.jpg
+#*.jpeg
+#*.png
+#*.bmp
+#*.tif
+#*.tiff
+#*.heic
+#*.JPG
+#*.JPEG
+#*.PNG
+#*.BMP
+#*.TIF
+#*.TIFF
 *.HEIC
 *.mp4
 *.mov
@@ -26,8 +21,8 @@ Repo-specific GitIgnore --------------------------------------------------------
 *.json
 *.xml
 
-*.cfg
-!cfg/yolov3*.cfg
+#*.cfg
+#!cfg/yolov3*.cfg
 
 storage.googleapis.com
 runs/*
