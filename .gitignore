@@ -1,4 +1,8 @@
-!**/assets/
+!/Week1/Note/note.assert/*
+!/Week2/Note/note.assert/*
+!/Week3/Note/note.assert/*
+!/Week4/Note/note.assert/*
+!/Week5/Note/note.assert/*
 Repo-specific GitIgnore ----------------------------------------------------------------------------------------------
 *.jpg
 *.jpeg
