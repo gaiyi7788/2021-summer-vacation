@@ -330,7 +330,7 @@ Darknet-19有19个convolutional和5个maxpooling层，采用全局平均池化�
 
 - yolov3输出了3个不同尺度的feature map，这个借鉴了FPN(feature pyramid networks)，采用多尺度来对不同size的目标进行检测，越精细的grid cell就可以检测出越精细的物体。
 - 但是与FPN不同的是，yolov3的融合是通过concat实现的，FPN则是通过add实现的。
-- yolov3一共9种anchor，3张feature map上各自对应3种anchor：
+- yolov3每个cell预测3个anchor，一共9种anchor，3张feature map上各自对应**3种anchor**：
   - **32倍降采样的感受野最大（13x13），适合检测大的目标**，anchor boxes为(116 ,90),(156 ,198)，(373 ,326)。
   - **16倍（26x26）适合一般大小的物体**，anchor boxes为(30,61)， (62,45)，(59,119)。
   - **8倍的感受野最小（52x52），适合检测小目标**，因此anchor boxes为(10,13)，(16,30)，(33,23)。

@@ -222,6 +222,54 @@ class Net(nn.Module):
 
 - Python 3 可以使用直接使用 **super().xxx** 代替 **super(Class, self).xxx** :
 
+### torch.nn.ModuleList
+
+nn.ModuleList,它是一个存储不同module，并自动将每个module的parameters添加到网络之中的容器。你可以把任意nn.Module的子类（如nn.Conv2d，nn.Linear等）加到这个list里面，方法和python自带的list一样，包括extend，append等操作，但不同于一般的list，加入到nn.ModuleList里面的module是会自动注册到整个网络上的，同时module的parameters也会自动添加到整个网络中。
+
+当我们需要之前层的信息的时候，比如 ResNets 中的 shortcut 结构，或者是像 FCN 中用到的 skip architecture 之类的，当前层的结果需要和之前层中的结果进行融合，一般使用 ModuleList 比较方便
+
+```python
+class ResidualBlock(nn.Moudle):
+    def __init(self, channels, use_residual=True, num_repeats=1):
+        super().__init__()
+        self.layers = nn.ModuleList()
+        for _ in num_repeats:
+            self.layers += [
+                CNNBlock(channels, channels//2, kernel_size = 1),
+                CNNBlock(channels//2, channels, kernel_size=3, padding=1)
+            ]
+        self.use_residual = use_residual
+        self.num_repeats = num_repeats
+        
+        def foward(self,x):
+            for layer in self.layers:
+                x = layer(x) + x if self.use_residual else layer(x)
+                return x;
+```
+
+但是，我们需要注意到，nn.ModuleList**并没有定义一个网络**，它只是将不同的模块储存在一起，这些模块之间并没有什么先后顺序可言。
+
+### torch.nn.Sequential
+
+不同于nn.ModuleList，nn.Sequential已经实现了内部的forward函数，而且里面的模块必须是按照顺序进行排列的，所以我们必须**确保前一个模块的输出大小和下一个模块的输入大小是一致的。**
+
+有的时候网络中有很多相似或者重复的层，我们一般会考虑用 for 循环来创建它们，用Sequential的话在forward函数里的实现更加简洁。
+
+```python
+class ScalePrediction(nn.Moudle):
+    def __init__(self, in_channels, num_classes):
+        super().__init__() 
+        self.pred = nn.Sequential(
+            CNNBlock(in_channels, 2*in_channels, kernel_size=3,padding=1),
+            CNNBlock(2*in_channels,3*(num_classes+5),bn_act=False,kernel_size=1) # [po,x,y,w,h]
+        )
+    
+    def forward(self,x):
+        return self.pred(x)
+```
+
+一般情况下 nn.Sequential 的用法是来组成卷积块 (block)，然后像拼积木一样把不同的 block 拼成整个网络，让代码更简洁，更加结构化。
+
 ### torch.nn.Conv2d(*in_channels*, *out_channels*, *kernel_size*, *stride=1*, *padding=0*, . . . )
 
 - Applies a 2D convolution over an input signal composed of several input planes.
