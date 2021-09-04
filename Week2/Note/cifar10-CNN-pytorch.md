@@ -270,7 +270,7 @@ class ScalePrediction(nn.Moudle):
 
 一般情况下 nn.Sequential 的用法是来组成卷积块 (block)，然后像拼积木一样把不同的 block 拼成整个网络，让代码更简洁，更加结构化。
 
-### torch.nn.Conv2d(*in_channels*, *out_channels*, *kernel_size*, *stride=1*, *padding=0*, . . . )
+### torch.nn.Conv2d(*in_channels*, *out_channels*, *kernel_size*, *stride=1*, *padding=0*, *bias=true*. . . )
 
 - Applies a 2D convolution over an input signal composed of several input planes.
 
@@ -279,7 +279,7 @@ self.conv1 = nn.Conv2d(3,6,5)
 ```
 
 - 对上例可以理解成对一个三通道的输入图像用6个5*5的卷积核进行操作，因此输出是6通道。
-
+- 对于bias，如果conv2d之后接BN层，一般不设置bias，详见BN部分。
 - 其余属性用到再查手册。
 
 ### torch.nn.MaxPool2d(*kernel_size*, *stride=None*, *padding=0*, . . .)
@@ -375,6 +375,8 @@ class Net(nn.Module):
 ![image-20210713150931980](cifar10-CNN-pytorch.assets/image-20210713150931980.png)
 
 ​			是一个自学习参数的标准化过程。
+
+- 这里注意，如果x带偏置bias，即$x_1=x_0*w_0+b_0$，而$E[x_1]=E[x_0]*w_0+b_0$，所以$x_1-E[x_1] = (x_0-E[x_0])*w_0$，与偏置bias无关，因此如果后接BN层的话其实没必要加偏置项。
 
 - **num_features** – $C$ from an expected input of size $(N, C, H, W)$
 

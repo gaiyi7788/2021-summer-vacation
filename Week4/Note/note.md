@@ -314,6 +314,8 @@ Darknet-19有19个convolutional和5个maxpooling层，采用全局平均池化�
 
 ## yolov3
 
+![preview](note.assets/v2-d2596ea39974bcde176d1cf4dc99705e_r.jpg)
+
 <img src="note.assets/image-20210805112206009.png" alt="image-20210805112206009"  />
 
 1. `DBL`:代码中的`Darknetconv2d_BN_Leaky`，是yolo_v3的基本组件。就是卷积+BN+Leaky relu，其实就是yolov2中的convolutional组件。
