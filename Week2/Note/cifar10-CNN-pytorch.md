@@ -42,6 +42,12 @@ else:
 - 为什么我们没注意到GPU的速度提升很多？那是因为网络非常的小。(跑2个epoch，gpu 65s ，cpu 75s)
 - 注意，只有`tensor`有`device`的属性。
 
+## Tensor相关操作
+
+- `torch.unsqueeze(input, dim, out=None)`：扩展维度，对dim位置插入维度1
+- `torch.squeeze(input, dim=None, out=None)`：将输入张量形状中的1 去除并返回。 如果输入是形如(A×1×B×1×C×1×D)，那么输出形状就为： (A×B×C×D)。当给定dim时，那么挤压操作只在给定维度上。例如，输入形状为: (A×1×B), `squeeze(input, 0)` 将会保持张量不变，只有用 `squeeze(input, 1)`，形状会变成 (A×B)。
+- `Tensor.ndimension()`：返回tensor的维度，为整数。
+
 ## 数据集制作与数据预处理
 
 ```python
@@ -577,7 +583,7 @@ print('Accuracy of the network on the 10000 test images: %d %%' % (100*correct/t
 ```
 
 - `with`是python中上下文管理器，当要进行固定的进入，返回操作时，可以将对应需要的操作放在`with`所需要的语句中。
-- 在进行测试过程时，不希望计算梯度浪费计算资源（因为没必要计算，测试阶段不涉及backward），使用`torch.no_grad()`就可以不计算。
+- 在进行测试过程时，不希望计算梯度浪费计算资源（因为没必要计算，测试阶段不涉及backward），使用`torch.no_grad()`就可以不计算。在该模块下，所有计算得出的tensor的requires_grad都自动设置为False。
 - `torch.max(input, dim) `，输入`outputs.data`是一个`tensor`，`dim`是`max`函数索引的维度，0是**每列**的最大值，1是**每行**的最大值。函数会返回两个`tensor`，第一个`tensor`是每行的最大值；第二个`tensor`是每行最大值的索引。在计算准确率时第一个tensor的`values`是不需要的，所以我们只需提取第二个tensor
 
 # 记录一下训练和测试效果
