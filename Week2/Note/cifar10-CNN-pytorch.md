@@ -151,6 +151,8 @@ class MyDataset(Dataset): #继承Dataset类
 - `__len__()`：**返回的是数据集的大小。**我们构建的数据集是一个对象，`__len__()`的目的就是获取对象的长度。
 - `__getitem__()`：实现了能够通过索引的方法获取对象中的任意元素。可以在`__getitem__()`中实现数据预处理。
 
+题外话：本文提供的示例代码，里面的cv2.imread()是在init里进行的，这样的好处是在getitem索引时可以非常快的得到目标元素。但如果数据集特别的大，这样就会非常吃内存，不推荐！！！最好是在得到index以后再进行读取。并且注意在返回结果之前将数据转为tensor
+
 ### torch.utils.data.random_split(*dataset*, *lengths*)
 
 按照给定的长度将数据集划分成没有重叠的新数据集组合。
@@ -182,6 +184,8 @@ testloader = torch.utils.data.DataLoader(
 - `shuffle`：随机打乱顺序，一般在训练数据中会采用。
 - `num_workers`：这个参数必须大于等于0，0的话表示数据导入在主进程中进行，其他大于0的数表示通过多个进程来导入数据，可以加快数据导入速度。
 - `collate_fn`
+
+注意在dataloader指定batch_size的大小后，就会自动把读入的tensor扩展dim=0，即batch对应的维度，不需要自己unsqueeze。
 
 ## 定义网络模型
 
