@@ -435,6 +435,16 @@ x = dr(x) #一般在全连接层加dropout
 
 ## 训练过程
 
+### torch.nn.MSELoss(*size_average=None*, *reduce=None*, *reduction='mean'*)
+
+- `size_average`:不推荐使用
+
+$$
+L = (x_n−y_n)^2
+$$
+
+![image-20211018220256912](/home/chenpengyu/.config/Typora/typora-user-images/image-20211018220256912.png)
+
 ### torch.nn.CrossEntropyLoss(...)
 
 - 在训练之前需要定义损失函数，这里是一个多分类问题，常用到交叉熵损失函数`nn.CrossEntropyLoss`。
