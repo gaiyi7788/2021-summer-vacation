@@ -280,6 +280,18 @@ class ScalePrediction(nn.Moudle):
 
 一般情况下 nn.Sequential 的用法是来组成卷积块 (block)，然后像拼积木一样把不同的 block 拼成整个网络，让代码更简洁，更加结构化。
 
+另：如何使用定义好的网络模型的一部分？
+
+```python
+features = list(vgg.features.children())
+# get each stage of the backbone
+self.features1 = nn.Sequential(*features[0:6])
+self.features2 = nn.Sequential(*features[6:13])
+self.features3 = nn.Sequential(*features[13:23])
+self.features4 = nn.Sequential(*features[23:33])
+self.features5 = nn.Sequential(*features[33:43])
+```
+
 ### torch.nn.Conv2d(*in_channels*, *out_channels*, *kernel_size*, *stride=1*, *padding=0*, *bias=true*. . . )
 
 - Applies a 2D convolution over an input signal composed of several input planes.
@@ -427,6 +439,15 @@ x = dr(x) #一般在全连接层加dropout
 - `Dropout` 层一般加在全连接层防止过拟合，提升模型泛化能力。很少见到卷积层后接`Dropout`（原因主要是卷积层参数少，不易过拟合）
 - 据说`BN`层和`Dropout`层不要共用，会造成网络性能的下降，同时使用可以将`dropout`放置于`BN`后面。
 - 参考论文[Understanding the Disharmony between Dropout and Batch Normalization by Variance Shift](https://arxiv.org/pdf/1801.05134.pdf)  或博客 [Batch Normalization和Dropout如何搭配使用？](https://www.pianshen.com/article/4249780388/)    概括来说，`dropout`加入后产生方差偏移，再连`BN`层会输出不准确。因此只在所有的`BN`层后面加入`dropout`层，或者采用论文中提出的均匀分布`Dropout` ==Uout==，对方差的偏移的敏感度降低了
+
+### torch.nn.AdaptiveAvgPool2d(output_size)
+
+底层是对 `F.adaptive_avg_pool2d(input, self.output_size)` 的封装，output_size是自己设定的输出值的大小，保证每个通道上的大小为output_size
+
+```python
+avgp = nn.AdaptiveAvgPool2d((5,1))
+output = avgp(input)
+```
 
 ### model.train(mode = True)和model.eval()
 
