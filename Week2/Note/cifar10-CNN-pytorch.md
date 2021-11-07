@@ -449,6 +449,39 @@ avgp = nn.AdaptiveAvgPool2d((5,1))
 output = avgp(input)
 ```
 
+### torch.roll(input, shifts, dims=None)
+
+```python
+>>> x
+tensor([[1, 2],
+        [3, 4],
+        [5, 6],
+        [7, 8]])
+'''第0维度向下移1位，多出的[7,8]补充到顶部'''
+>>> torch.roll(x, 1, 0)
+tensor([[7, 8],
+        [1, 2],
+        [3, 4],
+        [5, 6]])
+'''第0维度向上移1位，多出的[1,2]补充到底部'''
+>>> torch.roll(x, -1, 0)
+tensor([[3, 4],
+        [5, 6],
+        [7, 8],
+        [1, 2]])
+```
+
+### torch.einsum(equation, operands)
+
+爱因斯坦求和约定（einsum），能够以一种统一的方式表示各种各样的张量运算（内积、外积、转置、点乘、矩阵的迹、其他自定义运算），为不同运算的实现提供了一个统一模型。
+
+```python
+a = torch.rand(2,3)
+b = torch.rand(3,4)
+c = torch.einsum("ik,kj->ij", [a, b])
+# 等价操作 torch.mm(a, b)
+```
+
 ### model.train(mode = True)和model.eval()
 
 - 如果模型中有`BN`层和`Dropout`，需要在训练时添加`model.train(mode = True)`。
